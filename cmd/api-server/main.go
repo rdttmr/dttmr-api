@@ -80,7 +80,7 @@ func run(serviceName string, serviceVersion string) error {
 	go func() {
 		slog.Info("starting http server", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("failed to start http server", err)
+			slog.Error("failed to start http server", slog.Any("error", err))
 			os.Exit(1)
 		}
 	}()
