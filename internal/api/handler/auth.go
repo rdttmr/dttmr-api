@@ -17,6 +17,18 @@ func NewAuthHandler(authService *domain.AuthService) *AuthHandler {
 	return &AuthHandler{AuthService: authService}
 }
 
+// Login handles the login of a user
+//
+// @Summary Login route
+// @Description User authorization and token issuing
+// @Tags Authorization
+// @Accept json
+// @Produce json
+// @Param payload body request.LoginPayload true "Login payload"
+// @Success 200 {object} domain.AuthToken
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to login"
+// @Router /api/v1/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

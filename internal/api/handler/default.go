@@ -17,6 +17,15 @@ type apiResponse struct {
 	Form       map[string]string `json:"form"`
 }
 
+// DefaultHandler handles the default route
+//
+// @Summary Default route handler
+// @Description Default route handler
+// @Tags
+// @Accept json
+// @Produce json
+// @Success 200 {object} apiResponse
+// @Router /api/v1/ [get]
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

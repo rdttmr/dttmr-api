@@ -19,6 +19,23 @@ import (
 	"github.com/robindittmar/dttmr-api/internal/telemetry"
 )
 
+// @title dttmr-api
+// @version 0.1.0
+// @description API documentation for dttmr-api service.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name Robin Dittmar
+// @contact.email robindittmar@gmail.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey Bearer Token
+// @in Header
+// @name Authorization
 func main() {
 	serviceName := "dttmr-api"
 	serviceVersion := "0.1.0"
