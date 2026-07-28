@@ -19,6 +19,23 @@ import (
 	"github.com/robindittmar/dttmr-api/internal/telemetry"
 )
 
+// @title dttmr-api
+// @version 0.1.0
+// @description API documentation for dttmr-api service.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name Robin Dittmar
+// @contact.email robindittmar@gmail.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey Bearer Token
+// @in Header
+// @name Authorization
 func main() {
 	serviceName := "dttmr-api"
 	serviceVersion := "0.1.0"
@@ -80,7 +97,7 @@ func run(serviceName string, serviceVersion string) error {
 	go func() {
 		slog.Info("starting http server", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("failed to start http server", err)
+			slog.Error("failed to start http server", slog.Any("error", err))
 			os.Exit(1)
 		}
 	}()

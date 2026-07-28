@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/robindittmar/dttmr-api/internal/api/handler"
 )
 
@@ -14,12 +16,6 @@ func TestHealthHandler_Success(t *testing.T) {
 
 	handler.HealthHandler(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Errorf("HealthHandler returned wrong status code: got %v want %v", rr.Code, http.StatusOK)
-	}
-
-	expected := `{"status":"ok"}`
-	if rr.Body.String() != expected {
-		t.Errorf("HealthHandler returned unexpected body: got %v want %v", rr.Body.String(), expected)
-	}
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, `{"status":"ok"}`, rr.Body.String())
 }

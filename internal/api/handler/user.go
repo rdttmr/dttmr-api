@@ -17,6 +17,18 @@ func NewUserHandler(userService *domain.UserService) *UserHandler {
 	return &UserHandler{UserService: userService}
 }
 
+// CreateUser handles the creation of a user
+//
+// @Summary Create user route
+// @Description Create a user
+// @Tags User
+// @Accept json
+// @Produce json
+// @Param payload body request.CreateUserPayload true "Create user payload"
+// @Success 201 {object} domain.User
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to create user"
+// @Router /api/v1/user [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
