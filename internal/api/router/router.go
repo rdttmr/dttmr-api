@@ -32,6 +32,7 @@ func NewMux(cfg Config) http.Handler {
 
 	apiMux := http.NewServeMux()
 	apiMux.HandleFunc("/", handler.DefaultHandler)
+	apiMux.HandleFunc("GET /health", handler.HealthHandler)
 	apiMux.HandleFunc("POST /login", authHandler.Login)
 	apiMux.HandleFunc("POST /auth/refresh", authHandler.Refresh)
 
@@ -40,7 +41,6 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("POST /lists", protected(listHandler.CreateList))
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", handler.HealthHandler)
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiMux))
 
 	var httpHandler http.Handler = mux
