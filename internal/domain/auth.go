@@ -2,6 +2,9 @@ package domain
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,7 +15,10 @@ import (
 )
 
 type AuthRepository interface {
-	GetByEmail(ctx context.Context, email string) (*AuthUser, error)
+	GetUserById(ctx context.Context, id string) (*AuthUser, error)
+	GetUserByEmail(ctx context.Context, email string) (*AuthUser, error)
+	StoreRefreshToken(ctx context.Context, userID string, tokenHash string, expiresAt time.Time) error
+	ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error)
 }
 
 type AuthService struct {
@@ -20,8 +26,9 @@ type AuthService struct {
 	jwtSecret []byte
 }
 
-type AuthToken struct {
-	Token string `json:"token"`
+type TokenPair struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type AuthUser struct {
@@ -54,7 +61,7 @@ func NewAuthService(r AuthRepository, jwtSecret []byte) *AuthService {
 }
 
 func (s *AuthService) authenticate(ctx context.Context, email string, password string) (*AuthUser, error) {
-	user, err := s.repo.GetByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return user, err
 	}
@@ -70,20 +77,29 @@ func (s *AuthService) authenticate(ctx context.Context, email string, password s
 	return user, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email string, password string) (AuthToken, error) {
-	var authToken AuthToken
-
+func (s *AuthService) Login(ctx context.Context, email string, password string) (*TokenPair, error) {
 	user, err := s.authenticate(ctx, email, password)
 	if err != nil {
-		return authToken, err
+		return nil, err
 	}
 
-	authToken.Token, err = s.GenerateToken(user)
+	return s.issueTokens(ctx, user)
+}
+
+func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*TokenPair, error) {
+	tokenHash := hashToken(refreshToken)
+
+	userID, err := s.repo.ConsumeRefreshToken(ctx, tokenHash)
 	if err != nil {
-		return authToken, err
+		return nil, err
 	}
 
-	return authToken, nil
+	authUser, err := s.repo.GetUserById(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.issueTokens(ctx, authUser)
 }
 
 type JWTClaims struct {
@@ -97,13 +113,35 @@ type contextKey string
 
 const AuthContextKey = contextKey("auth")
 
-func (s *AuthService) GenerateToken(authUser *AuthUser) (string, error) {
+func (s *AuthService) issueTokens(ctx context.Context, authUser *AuthUser) (*TokenPair, error) {
+	accessToken, err := s.GenerateAccessToken(authUser)
+	if err != nil {
+		return nil, fmt.Errorf("failed to issue access token: %s", err)
+	}
+
+	refreshToken, err := s.GenerateRefreshToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to issue refresh token: %s", err)
+	}
+
+	err = s.repo.StoreRefreshToken(ctx, authUser.ID, hashToken(refreshToken), time.Now().Add(time.Hour*24*7))
+	if err != nil {
+		return nil, fmt.Errorf("failed to store refresh token: %s", err)
+	}
+
+	return &TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *AuthService) GenerateAccessToken(authUser *AuthUser) (string, error) {
 	claims := JWTClaims{
 		UserID: authUser.ID,
 		Email:  authUser.Email,
 		Name:   authUser.Name,
 	}
-	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Hour * 24))
+	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute * 15))
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -115,7 +153,16 @@ func (s *AuthService) GenerateToken(authUser *AuthUser) (string, error) {
 	return tokenString, nil
 }
 
-func (s *AuthService) ParseToken(ctx context.Context, tokenString string) (*AuthContext, error) {
+func (s *AuthService) GenerateRefreshToken() (string, error) {
+	rawToken, err := generateSecureToken(32)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	return rawToken, nil
+}
+
+func (s *AuthService) ParseAccessToken(ctx context.Context, tokenString string) (*AuthContext, error) {
 	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -133,4 +180,17 @@ func (s *AuthService) ParseToken(ctx context.Context, tokenString string) (*Auth
 		Email:  claims.Email,
 		Name:   claims.Name,
 	}, nil
+}
+
+func generateSecureToken(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func hashToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
 }
