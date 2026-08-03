@@ -28,7 +28,7 @@ func WithJWT(authService *domain.AuthService) func(http.HandlerFunc) http.Handle
 				return
 			}
 
-			authContext, err := authService.ParseToken(ctx, parts[1])
+			authContext, err := authService.ParseAccessToken(ctx, parts[1])
 			if err != nil {
 				slog.ErrorContext(ctx, "invalid token", slog.Any("error", err))
 				response.Error(ctx, w, http.StatusUnauthorized, "invalid or expired token")
