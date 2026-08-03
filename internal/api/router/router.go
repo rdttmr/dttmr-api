@@ -33,6 +33,7 @@ func NewMux(cfg Config) http.Handler {
 	apiMux := http.NewServeMux()
 	apiMux.HandleFunc("/", handler.DefaultHandler)
 	apiMux.HandleFunc("POST /login", authHandler.Login)
+	apiMux.HandleFunc("POST /auth/refresh", authHandler.Refresh)
 
 	apiMux.Handle("POST /users", protected(userHandler.CreateUser))
 
