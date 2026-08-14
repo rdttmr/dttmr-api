@@ -32,7 +32,7 @@ func NewListHandler(listService *domain.ListService) *ListHandler {
 func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	payload, err := request.DecodeCreateList(r)
+	payload, err := request.DecodeJSON[request.CreateListPayload](r)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to decode create list payload", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")

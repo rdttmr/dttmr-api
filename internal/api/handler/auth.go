@@ -32,7 +32,7 @@ func NewAuthHandler(authService *domain.AuthService) *AuthHandler {
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	payload, err := request.DecodeLogin(r)
+	payload, err := request.DecodeJSON[request.LoginPayload](r)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to decode login payload", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
@@ -64,7 +64,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	payload, err := request.DecodeRefresh(r)
+	payload, err := request.DecodeJSON[request.RefreshPayload](r)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to decode refresh payload", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
