@@ -57,3 +57,52 @@ func (r *ListRepo) CreateList(ctx context.Context, name string, userIDs []string
 
 	return list, nil
 }
+
+func (r *ListRepo) AddUserToList(ctx context.Context, listID string, userID string) error {
+	_, err := r.db.ExecContext(ctx,
+		"INSERT INTO list_users (list_id, user_id) VALUES ($1, $2)",
+		listID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to associate user/list: %w", err)
+	}
+
+	return nil
+}
+
+func (r *ListRepo) RemoveUserFromList(ctx context.Context, listID string, userID string) error {
+	_, err := r.db.ExecContext(ctx,
+		"DELETE FROM list_users WHERE list_id = $1 AND user_id = $2",
+		listID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to remove user from list: %w", err)
+	}
+
+	return nil
+}
+
+func (r *ListRepo) AddListItem(ctx context.Context, listID string, title string) (*domain.ListItem, error) {
+	l := &domain.ListItem{Title: title}
+
+	err := r.db.QueryRowContext(ctx,
+		"INSERT INTO list_items (list_id, title) VALUES ($1, $2) RETURNING id, is_completed, created_at, modified_at",
+		listID, title,
+	).Scan(&l.ID, &l.IsCompleted, &l.CreatedAt, &l.ModifiedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert list item: %w", err)
+	}
+
+	return l, nil
+}
+
+func (r *ListRepo) UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error {
+	_, err := r.db.ExecContext(ctx, "UPDATE list_items SET title = $1, is_completed = $2 WHERE id = $3",
+		title, isCompleted, listItemID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update list item: %w", err)
+	}
+
+	return nil
+}
