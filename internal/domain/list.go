@@ -50,7 +50,7 @@ func (s *ListService) Create(ctx context.Context, name string, userIDs []string)
 	return s.repo.CreateList(ctx, name, userIDs)
 }
 
-func (s *ListService) AddUserToList(ctx context.Context, listID string, userID string) error {
+func (s *ListService) AddUserToList(ctx context.Context, ownerID string, listID string, userID string) error {
 	if listID == "" {
 		return errors.New("list id must not be empty")
 	}
@@ -61,7 +61,7 @@ func (s *ListService) AddUserToList(ctx context.Context, listID string, userID s
 	return s.repo.AddUserToList(ctx, listID, userID)
 }
 
-func (s *ListService) RemoveUserFromList(ctx context.Context, listID string, userID string) error {
+func (s *ListService) RemoveUserFromList(ctx context.Context, ownerID string, listID string, userID string) error {
 	if listID == "" {
 		return errors.New("list id must not be empty")
 	}
@@ -72,7 +72,7 @@ func (s *ListService) RemoveUserFromList(ctx context.Context, listID string, use
 	return s.repo.RemoveUserFromList(ctx, listID, userID)
 }
 
-func (s *ListService) CreateListItem(ctx context.Context, listID string, title string) (*ListItem, error) {
+func (s *ListService) CreateListItem(ctx context.Context, ownerID string, listID string, title string) (*ListItem, error) {
 	if listID == "" {
 		return nil, errors.New("list id must not be empty")
 	}
@@ -83,7 +83,7 @@ func (s *ListService) CreateListItem(ctx context.Context, listID string, title s
 	return s.repo.CreateListItem(ctx, listID, title)
 }
 
-func (s *ListService) UpdateListItem(ctx context.Context, listItemID, title string, isCompleted bool) error {
+func (s *ListService) UpdateListItem(ctx context.Context, ownerID string, listItemID string, title string, isCompleted bool) error {
 	if listItemID == "" {
 		return errors.New("list item id must not be empty")
 	}
