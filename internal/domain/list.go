@@ -26,7 +26,7 @@ type ListRepository interface {
 	CreateList(ctx context.Context, name string, userIDs []string) (*List, error)
 	AddUserToList(ctx context.Context, listID string, userID string) error
 	RemoveUserFromList(ctx context.Context, listID string, userID string) error
-	AddListItem(ctx context.Context, listID string, title string) (*ListItem, error)
+	CreateListItem(ctx context.Context, listID string, title string) (*ListItem, error)
 	UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error
 }
 

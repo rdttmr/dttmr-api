@@ -82,7 +82,7 @@ func (r *ListRepo) RemoveUserFromList(ctx context.Context, listID string, userID
 	return nil
 }
 
-func (r *ListRepo) AddListItem(ctx context.Context, listID string, title string) (*domain.ListItem, error) {
+func (r *ListRepo) CreateListItem(ctx context.Context, listID string, title string) (*domain.ListItem, error) {
 	l := &domain.ListItem{Title: title}
 
 	err := r.db.QueryRowContext(ctx,
