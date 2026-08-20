@@ -125,7 +125,7 @@ func (r *ListRepo) CreateListItem(ctx context.Context, listID string, title stri
 }
 
 func (r *ListRepo) UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error {
-	_, err := r.db.ExecContext(ctx, "UPDATE list_items SET title = $1, is_completed = $2 WHERE id = $3",
+	_, err := r.db.ExecContext(ctx, "UPDATE list_items SET title = $1, is_completed = $2, modified_at = NOW() WHERE id = $3",
 		title, isCompleted, listItemID,
 	)
 	if err != nil {
