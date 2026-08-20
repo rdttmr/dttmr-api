@@ -37,6 +37,7 @@ type ListRepository interface {
 	AddUserToList(ctx context.Context, listID string, userID string) error
 	RemoveUserFromList(ctx context.Context, listID string, userID string) error
 	IsUserInList(ctx context.Context, listID string, userID string) (bool, error)
+	IsUserInListByListItem(ctx context.Context, listItemID string, userID string) (bool, error)
 	CreateListItem(ctx context.Context, listID string, title string) (*ListItem, error)
 	UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error
 }

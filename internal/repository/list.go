@@ -96,6 +96,20 @@ func (r *ListRepo) IsUserInList(ctx context.Context, listID string, userID strin
 	return cnt > 0, nil
 }
 
+func (r *ListRepo) IsUserInListByListItem(ctx context.Context, listItemID string, userID string) (bool, error) {
+	var cnt int
+
+	err := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM list_users WHERE list_id = (SELECT list_id FROM list_items WHERE id = $1) AND user_id = $2",
+		listItemID, userID,
+	).Scan(&cnt)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if user is in list: %w", err)
+	}
+
+	return cnt > 0, nil
+}
+
 func (r *ListRepo) CreateListItem(ctx context.Context, listID string, title string) (*domain.ListItem, error) {
 	l := &domain.ListItem{Title: title}
 
