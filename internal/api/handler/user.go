@@ -32,7 +32,7 @@ func NewUserHandler(userService *domain.UserService) *UserHandler {
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	payload, err := request.DecodeCreateUser(r)
+	payload, err := request.DecodeJSON[request.CreateUserPayload](r)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to decode create user payload", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")

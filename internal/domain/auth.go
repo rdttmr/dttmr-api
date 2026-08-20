@@ -77,26 +77,26 @@ func (s *AuthService) authenticate(ctx context.Context, email string, password s
 	return user, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email string, password string) (*TokenPair, error) {
+func (s *AuthService) Login(ctx context.Context, email string, password string) (TokenPair, error) {
 	user, err := s.authenticate(ctx, email, password)
 	if err != nil {
-		return nil, err
+		return TokenPair{}, err
 	}
 
 	return s.issueTokens(ctx, user)
 }
 
-func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*TokenPair, error) {
+func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
 	tokenHash := hashToken(refreshToken)
 
 	userID, err := s.repo.ConsumeRefreshToken(ctx, tokenHash)
 	if err != nil {
-		return nil, err
+		return TokenPair{}, err
 	}
 
 	authUser, err := s.repo.GetUserById(ctx, userID)
 	if err != nil {
-		return nil, err
+		return TokenPair{}, err
 	}
 
 	return s.issueTokens(ctx, authUser)
@@ -113,23 +113,23 @@ type contextKey string
 
 const AuthContextKey = contextKey("auth")
 
-func (s *AuthService) issueTokens(ctx context.Context, authUser *AuthUser) (*TokenPair, error) {
+func (s *AuthService) issueTokens(ctx context.Context, authUser *AuthUser) (TokenPair, error) {
 	accessToken, err := s.GenerateAccessToken(authUser)
 	if err != nil {
-		return nil, fmt.Errorf("failed to issue access token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to issue access token: %s", err)
 	}
 
 	refreshToken, err := s.GenerateRefreshToken()
 	if err != nil {
-		return nil, fmt.Errorf("failed to issue refresh token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to issue refresh token: %s", err)
 	}
 
 	err = s.repo.StoreRefreshToken(ctx, authUser.ID, hashToken(refreshToken), time.Now().Add(time.Hour*24*7))
 	if err != nil {
-		return nil, fmt.Errorf("failed to store refresh token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to store refresh token: %s", err)
 	}
 
-	return &TokenPair{
+	return TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil

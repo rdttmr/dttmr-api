@@ -3,7 +3,18 @@ package domain
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
+)
+
+var (
+	ErrListIDEmpty        = errors.New("list id must not be empty")
+	ErrListNameEmpty      = errors.New("list name must not be empty")
+	ErrUserIDEmpty        = errors.New("user id must not be empty")
+	ErrUserIDsEmpty       = errors.New("user ids must not be empty")
+	ErrListItemIDEmpty    = errors.New("list item id must not be empty")
+	ErrListItemTitleEmpty = errors.New("list item title must not be empty")
+	ErrUserNotInList      = errors.New("user not in list")
 )
 
 type List struct {
@@ -13,8 +24,23 @@ type List struct {
 	ModifiedAt time.Time `json:"modified_at"`
 }
 
+type ListItem struct {
+	ID          string    `json:"id"`
+	ListID      string    `json:"list_id"`
+	Title       string    `json:"title"`
+	IsCompleted bool      `json:"is_completed"`
+	CreatedAt   time.Time `json:"created_at"`
+	ModifiedAt  time.Time `json:"modified_at"`
+}
+
 type ListRepository interface {
 	CreateList(ctx context.Context, name string, userIDs []string) (*List, error)
+	AddUserToList(ctx context.Context, listID string, userID string) error
+	RemoveUserFromList(ctx context.Context, listID string, userID string) error
+	IsUserInList(ctx context.Context, listID string, userID string) (bool, error)
+	IsUserInListByItemID(ctx context.Context, listItemID string, userID string) (bool, error)
+	CreateListItem(ctx context.Context, listID string, title string) (*ListItem, error)
+	UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error
 }
 
 type ListService struct {
@@ -25,14 +51,94 @@ func NewListService(r ListRepository) *ListService {
 	return &ListService{repo: r}
 }
 
-func (s *ListService) Create(ctx context.Context, name string, userIDs []string) (*List, error) {
+func (s *ListService) Create(ctx context.Context, authUserID string, name string, userIDs []string) (*List, error) {
 	if len(userIDs) == 0 {
-		return nil, errors.New("users must have at least one associated user")
+		return nil, ErrUserIDsEmpty
 	}
 
 	if name == "" {
-		return nil, errors.New("list name must not be empty")
+		return nil, ErrListNameEmpty
+	}
+
+	if !slices.Contains(userIDs, authUserID) {
+		userIDs = append(userIDs, authUserID)
 	}
 
 	return s.repo.CreateList(ctx, name, userIDs)
+}
+
+func (s *ListService) AddUserToList(ctx context.Context, authUserID string, listID string, userID string) error {
+	if listID == "" {
+		return ErrListIDEmpty
+	}
+	if userID == "" {
+		return ErrUserIDEmpty
+	}
+
+	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
+	if err != nil {
+		return err
+	}
+	if !inList {
+		return ErrUserNotInList
+	}
+
+	return s.repo.AddUserToList(ctx, listID, userID)
+}
+
+func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string, listID string, userID string) error {
+	if listID == "" {
+		return ErrListIDEmpty
+	}
+	if userID == "" {
+		return ErrUserIDEmpty
+	}
+
+	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
+	if err != nil {
+		return err
+	}
+	if !inList {
+		return ErrUserNotInList
+	}
+
+	return s.repo.RemoveUserFromList(ctx, listID, userID)
+}
+
+func (s *ListService) CreateListItem(ctx context.Context, authUserID string, listID string, title string) (*ListItem, error) {
+	if listID == "" {
+		return nil, ErrListIDEmpty
+	}
+	if title == "" {
+		return nil, ErrListItemTitleEmpty
+	}
+
+	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
+	if err != nil {
+		return nil, err
+	}
+	if !inList {
+		return nil, ErrUserNotInList
+	}
+
+	return s.repo.CreateListItem(ctx, listID, title)
+}
+
+func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, listItemID string, title string, isCompleted bool) error {
+	if listItemID == "" {
+		return ErrListItemIDEmpty
+	}
+	if title == "" {
+		return ErrListItemTitleEmpty
+	}
+
+	inList, err := s.repo.IsUserInListByItemID(ctx, listItemID, authUserID)
+	if err != nil {
+		return err
+	}
+	if !inList {
+		return ErrUserNotInList
+	}
+
+	return s.repo.UpdateListItem(ctx, listItemID, title, isCompleted)
 }

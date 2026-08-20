@@ -1,25 +1,27 @@
 package request
 
-import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-)
-
 type CreateListPayload struct {
 	Name    string   `json:"name"`
 	UserIDs []string `json:"user_ids"`
 }
 
-func DecodeCreateList(r *http.Request) (CreateListPayload, error) {
-	var payload CreateListPayload
+type AddUserToListPayload struct {
+	ListID string `json:"list_id"`
+	UserID string `json:"user_id"`
+}
 
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
+type RemoveUserFromListPayload struct {
+	ListID string `json:"list_id"`
+	UserID string `json:"user_id"`
+}
 
-	if err := decoder.Decode(&payload); err != nil {
-		return payload, fmt.Errorf("error decoding create list payload: %w", err)
-	}
+type CreateListItemPayload struct {
+	ListID string `json:"list_id"`
+	Title  string `json:"title"`
+}
 
-	return payload, nil
+type UpdateListItemPayload struct {
+	ListItemID  string `json:"list_item_id"`
+	Title       string `json:"title"`
+	IsCompleted bool   `json:"is_completed"`
 }
