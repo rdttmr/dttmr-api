@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 )
 
@@ -46,6 +47,10 @@ func (s *ListService) Create(ctx context.Context, authUserID string, name string
 
 	if name == "" {
 		return nil, errors.New("list name must not be empty")
+	}
+
+	if !slices.Contains(userIDs, authUserID) {
+		userIDs = append(userIDs, authUserID)
 	}
 
 	return s.repo.CreateList(ctx, name, userIDs)

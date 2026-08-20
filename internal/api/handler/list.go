@@ -3,7 +3,6 @@ package handler
 import (
 	"log/slog"
 	"net/http"
-	"slices"
 
 	"github.com/robindittmar/dttmr-api/internal/api/request"
 	"github.com/robindittmar/dttmr-api/internal/api/response"
@@ -47,12 +46,7 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: should this be in ListService?
-	if !slices.Contains(payload.UserIDs, authContext.UserID) {
-		payload.UserIDs = append(payload.UserIDs, authContext.UserID)
-	}
-
-	list, err := h.ListService.Create(ctx, payload.Name, payload.UserIDs)
+	list, err := h.ListService.Create(ctx, authContext.UserID, payload.Name, payload.UserIDs)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
