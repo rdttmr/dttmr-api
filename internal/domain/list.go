@@ -7,6 +7,15 @@ import (
 	"time"
 )
 
+var (
+	ErrListIDEmpty        = errors.New("list id must not be empty")
+	ErrListNameEmpty      = errors.New("list name must not be empty")
+	ErrUserIDEmpty        = errors.New("user id must not be empty")
+	ErrUserIDsEmpty       = errors.New("user ids must not be empty")
+	ErrListItemIDEmpty    = errors.New("list item id must not be empty")
+	ErrListItemTitleEmpty = errors.New("list item title must not be empty")
+)
+
 type List struct {
 	ID         string    `json:"id"`
 	Name       string    `json:"name"`
@@ -42,11 +51,11 @@ func NewListService(r ListRepository) *ListService {
 
 func (s *ListService) Create(ctx context.Context, authUserID string, name string, userIDs []string) (*List, error) {
 	if len(userIDs) == 0 {
-		return nil, errors.New("users must have at least one associated user")
+		return nil, ErrUserIDsEmpty
 	}
 
 	if name == "" {
-		return nil, errors.New("list name must not be empty")
+		return nil, ErrListNameEmpty
 	}
 
 	if !slices.Contains(userIDs, authUserID) {
@@ -58,10 +67,10 @@ func (s *ListService) Create(ctx context.Context, authUserID string, name string
 
 func (s *ListService) AddUserToList(ctx context.Context, authUserID string, listID string, userID string) error {
 	if listID == "" {
-		return errors.New("list id must not be empty")
+		return ErrListIDEmpty
 	}
 	if userID == "" {
-		return errors.New("user id must not be empty")
+		return ErrUserIDEmpty
 	}
 
 	return s.repo.AddUserToList(ctx, listID, userID)
@@ -69,10 +78,10 @@ func (s *ListService) AddUserToList(ctx context.Context, authUserID string, list
 
 func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string, listID string, userID string) error {
 	if listID == "" {
-		return errors.New("list id must not be empty")
+		return ErrListIDEmpty
 	}
 	if userID == "" {
-		return errors.New("user id must not be empty")
+		return ErrUserIDEmpty
 	}
 
 	return s.repo.RemoveUserFromList(ctx, listID, userID)
@@ -80,10 +89,10 @@ func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string,
 
 func (s *ListService) CreateListItem(ctx context.Context, authUserID string, listID string, title string) (*ListItem, error) {
 	if listID == "" {
-		return nil, errors.New("list id must not be empty")
+		return nil, ErrListIDEmpty
 	}
 	if title == "" {
-		return nil, errors.New("list item title must not be empty")
+		return nil, ErrListItemTitleEmpty
 	}
 
 	return s.repo.CreateListItem(ctx, listID, title)
@@ -91,10 +100,10 @@ func (s *ListService) CreateListItem(ctx context.Context, authUserID string, lis
 
 func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, listItemID string, title string, isCompleted bool) error {
 	if listItemID == "" {
-		return errors.New("list item id must not be empty")
+		return ErrListItemIDEmpty
 	}
 	if title == "" {
-		return errors.New("list item title must not be empty")
+		return ErrListItemTitleEmpty
 	}
 
 	return s.repo.UpdateListItem(ctx, listItemID, title, isCompleted)
