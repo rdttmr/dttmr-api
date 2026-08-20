@@ -96,7 +96,7 @@ func (r *ListRepo) IsUserInList(ctx context.Context, listID string, userID strin
 	return cnt > 0, nil
 }
 
-func (r *ListRepo) IsUserInListByListItem(ctx context.Context, listItemID string, userID string) (bool, error) {
+func (r *ListRepo) IsUserInListByItemID(ctx context.Context, listItemID string, userID string) (bool, error) {
 	var cnt int
 
 	err := r.db.QueryRowContext(ctx,
