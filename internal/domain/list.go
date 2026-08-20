@@ -14,6 +14,7 @@ var (
 	ErrUserIDsEmpty       = errors.New("user ids must not be empty")
 	ErrListItemIDEmpty    = errors.New("list item id must not be empty")
 	ErrListItemTitleEmpty = errors.New("list item title must not be empty")
+	ErrUserNotInList      = errors.New("user not in list")
 )
 
 type List struct {
@@ -74,6 +75,14 @@ func (s *ListService) AddUserToList(ctx context.Context, authUserID string, list
 		return ErrUserIDEmpty
 	}
 
+	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
+	if err != nil {
+		return err
+	}
+	if !inList {
+		return ErrUserNotInList
+	}
+
 	return s.repo.AddUserToList(ctx, listID, userID)
 }
 
@@ -83,6 +92,14 @@ func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string,
 	}
 	if userID == "" {
 		return ErrUserIDEmpty
+	}
+
+	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
+	if err != nil {
+		return err
+	}
+	if !inList {
+		return ErrUserNotInList
 	}
 
 	return s.repo.RemoveUserFromList(ctx, listID, userID)
@@ -96,6 +113,14 @@ func (s *ListService) CreateListItem(ctx context.Context, authUserID string, lis
 		return nil, ErrListItemTitleEmpty
 	}
 
+	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
+	if err != nil {
+		return nil, err
+	}
+	if !inList {
+		return nil, ErrUserNotInList
+	}
+
 	return s.repo.CreateListItem(ctx, listID, title)
 }
 
@@ -105,6 +130,14 @@ func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, lis
 	}
 	if title == "" {
 		return ErrListItemTitleEmpty
+	}
+
+	inList, err := s.repo.IsUserInListByItemID(ctx, listItemID, authUserID)
+	if err != nil {
+		return err
+	}
+	if !inList {
+		return ErrUserNotInList
 	}
 
 	return s.repo.UpdateListItem(ctx, listItemID, title, isCompleted)
