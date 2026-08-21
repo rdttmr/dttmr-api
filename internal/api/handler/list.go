@@ -14,8 +14,8 @@ type ListHandler struct {
 	UserService *domain.UserService
 }
 
-func NewListHandler(listService *domain.ListService) *ListHandler {
-	return &ListHandler{ListService: listService}
+func NewListHandler(listService *domain.ListService, userService *domain.UserService) *ListHandler {
+	return &ListHandler{ListService: listService, UserService: userService}
 }
 
 // CreateList handles the creation of a list

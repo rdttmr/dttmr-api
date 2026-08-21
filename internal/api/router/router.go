@@ -26,7 +26,7 @@ func NewMux(cfg Config) http.Handler {
 
 	listRepo := repository.NewListRepo(cfg.Database)
 	listService := domain.NewListService(listRepo)
-	listHandler := handler.NewListHandler(listService)
+	listHandler := handler.NewListHandler(listService, userService)
 
 	protected := middleware.WithJWT(authService)
 
