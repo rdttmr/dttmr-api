@@ -59,9 +59,18 @@ func (r *ListRepo) CreateList(ctx context.Context, name string, userIDs []string
 	return list, nil
 }
 
+func (r *ListRepo) DeleteList(ctx context.Context, listID string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM lists WHERE id = $1", listID)
+	if err != nil {
+		return fmt.Errorf("failed to delete list: %w", err)
+	}
+
+	return nil
+}
+
 func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, name, lists.created_at, modified_at FROM lists INNER JOIN list_users ON lists.id=list_users.list_id WHERE list_users.user_id = $1",
+		"SELECT l.id, l.name, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true) FROM lists AS l INNER JOIN list_users ON l.id=list_users.list_id WHERE list_users.user_id = $1",
 		userID,
 	)
 	if err != nil {
@@ -75,7 +84,7 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 	var lists []domain.List
 	for rows.Next() {
 		var l domain.List
-		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt)
+		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt, &l.TotalItems, &l.CompletedItems)
 		if err != nil {
 			return nil, err
 		}
@@ -153,6 +162,15 @@ func (r *ListRepo) CreateListItem(ctx context.Context, listID string, title stri
 	return l, nil
 }
 
+func (r *ListRepo) DeleteListItem(ctx context.Context, listItemID string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM list_items WHERE id = $1", listItemID)
+	if err != nil {
+		return fmt.Errorf("failed to delete list item: %w", err)
+	}
+
+	return nil
+}
+
 func (r *ListRepo) UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error {
 	_, err := r.db.ExecContext(ctx, "UPDATE list_items SET title = $1, is_completed = $2, modified_at = NOW() WHERE id = $3",
 		title, isCompleted, listItemID,
@@ -177,7 +195,7 @@ func (r *ListRepo) SetListItemCompleted(ctx context.Context, listItemID string, 
 
 func (r *ListRepo) GetListItems(ctx context.Context, listID string) ([]domain.ListItem, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1",
+		"SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at DESC",
 		listID,
 	)
 	if err != nil {

@@ -18,10 +18,12 @@ var (
 )
 
 type List struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	CreatedAt  time.Time `json:"created_at"`
-	ModifiedAt time.Time `json:"modified_at"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	CreatedAt      time.Time `json:"created_at"`
+	ModifiedAt     time.Time `json:"modified_at"`
+	TotalItems     int       `json:"total_items"`
+	CompletedItems int       `json:"completed_items"`
 }
 
 type ListItem struct {
@@ -35,12 +37,14 @@ type ListItem struct {
 
 type ListRepository interface {
 	CreateList(ctx context.Context, name string, userIDs []string) (*List, error)
+	DeleteList(ctx context.Context, listID string) error
 	GetLists(ctx context.Context, userID string) ([]List, error)
 	AddUserToList(ctx context.Context, listID string, userID string) error
 	RemoveUserFromList(ctx context.Context, listID string, userID string) error
 	IsUserInList(ctx context.Context, listID string, userID string) (bool, error)
 	IsUserInListByItemID(ctx context.Context, listItemID string, userID string) (bool, error)
 	CreateListItem(ctx context.Context, listID string, title string) (*ListItem, error)
+	DeleteListItem(ctx context.Context, listItemID string) error
 	UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error
 	SetListItemCompleted(ctx context.Context, listItemID string, isCompleted bool) error
 	GetListItems(ctx context.Context, listID string) ([]ListItem, error)
@@ -54,7 +58,7 @@ func NewListService(r ListRepository) *ListService {
 	return &ListService{repo: r}
 }
 
-func (s *ListService) Create(ctx context.Context, authUserID string, name string, userIDs []string) (*List, error) {
+func (s *ListService) CreateList(ctx context.Context, authUserID string, name string, userIDs []string) (*List, error) {
 	if name == "" {
 		return nil, ErrListNameEmpty
 	}
@@ -64,6 +68,18 @@ func (s *ListService) Create(ctx context.Context, authUserID string, name string
 	}
 
 	return s.repo.CreateList(ctx, name, userIDs)
+}
+
+func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID string) error {
+	if listID == "" {
+		return ErrListIDEmpty
+	}
+
+	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
+		return err
+	}
+
+	return s.repo.DeleteList(ctx, listID)
 }
 
 func (s *ListService) GetLists(ctx context.Context, authUserID string) ([]List, error) {
@@ -78,12 +94,8 @@ func (s *ListService) AddUserToList(ctx context.Context, authUserID string, list
 		return ErrUserIDEmpty
 	}
 
-	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
-	if err != nil {
+	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
 		return err
-	}
-	if !inList {
-		return ErrUserNotInList
 	}
 
 	return s.repo.AddUserToList(ctx, listID, userID)
@@ -117,6 +129,18 @@ func (s *ListService) CreateListItem(ctx context.Context, authUserID string, lis
 	}
 
 	return s.repo.CreateListItem(ctx, listID, title)
+}
+
+func (s *ListService) DeleteListItem(ctx context.Context, authUserID string, listItemID string) error {
+	if listItemID == "" {
+		return ErrListItemIDEmpty
+	}
+
+	if err := s.userAllowedToAccessListItem(ctx, authUserID, listItemID); err != nil {
+		return err
+	}
+
+	return s.repo.DeleteListItem(ctx, listItemID)
 }
 
 func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, listItemID string, title string, isCompleted bool) error {

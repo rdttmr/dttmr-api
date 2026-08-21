@@ -11,6 +11,7 @@ import (
 
 type ListHandler struct {
 	ListService *domain.ListService
+	UserService *domain.UserService
 }
 
 func NewListHandler(listService *domain.ListService) *ListHandler {
@@ -46,7 +47,7 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.ListService.Create(ctx, authContext.UserID, payload.Name, payload.UserIDs)
+	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.Name, payload.UserIDs)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
@@ -55,6 +56,46 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 
 	slog.InfoContext(ctx, "created list successfully", slog.Any("list_id", list.ID))
 	response.JSON(ctx, w, http.StatusCreated, list)
+}
+
+// DeleteList handles the deletion of a list
+//
+// @Summary Delete list route
+// @Description Deletes a list, cascading to user associations and items
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param id path int true "List ID"
+// @Success 204
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 500 {object} response.ErrorResponse "failed to delete list"
+// @Router /lists/{id} [delete]
+func (h *ListHandler) DeleteList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listID := r.PathValue("id")
+	if listID == "" {
+		slog.ErrorContext(ctx, "failed to read list id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to delete list")
+		return
+	}
+
+	err = h.ListService.DeleteList(ctx, authContext.UserID, listID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to delete list", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to delete list")
+		return
+	}
+
+	slog.InfoContext(ctx, "deleted list successfully", slog.Any("list_id", listID))
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // GetLists handles fetching lists for the current user
@@ -81,7 +122,7 @@ func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 
 	lists, err := h.ListService.GetLists(ctx, authContext.UserID)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
+		slog.ErrorContext(ctx, "failed to get lists", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
 		return
 	}
@@ -99,6 +140,7 @@ func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 // @Param payload body request.AddUserToListPayload true "Add user to list payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to find email in system"
 // @Error 500 {object} response.ErrorResponse "failed to add user to list"
 // @Router /lists/user [post]
 func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
@@ -118,14 +160,21 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.ListService.AddUserToList(ctx, authContext.UserID, payload.ListID, payload.UserID)
+	user, err := h.UserService.GetUserByEmail(ctx, payload.Email)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get user by email", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to find email in system")
+		return
+	}
+
+	err = h.ListService.AddUserToList(ctx, authContext.UserID, payload.ListID, user.ID)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to add user to list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to add user to list")
 		return
 	}
 
-	slog.InfoContext(ctx, "added user to list successfully", slog.Any("list_id", payload.ListID), slog.Any("user_id", payload.UserID))
+	slog.InfoContext(ctx, "added user to list successfully", slog.Any("list_id", payload.ListID), slog.Any("email", user.Email))
 	response.Status(ctx, w, http.StatusNoContent)
 }
 
@@ -139,6 +188,7 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 // @Param payload body request.RemoveUserFromListPayload true "Remove user from list payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to find email in system"
 // @Error 500 {object} response.ErrorResponse "failed to remove user from list"
 // @Router /lists/user [delete]
 func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request) {
@@ -158,14 +208,21 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = h.ListService.RemoveUserFromList(ctx, authContext.UserID, payload.ListID, payload.UserID)
+	user, err := h.UserService.GetUserByEmail(ctx, payload.Email)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get user by email", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to find email in system")
+		return
+	}
+
+	err = h.ListService.RemoveUserFromList(ctx, authContext.UserID, payload.ListID, user.ID)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to remove user from list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to remove user from list")
 		return
 	}
 
-	slog.InfoContext(ctx, "removed user from list successfully", slog.Any("list_id", payload.ListID), slog.Any("user_id", payload.UserID))
+	slog.InfoContext(ctx, "removed user from list successfully", slog.Any("list_id", payload.ListID), slog.Any("email", user.Email))
 	response.Status(ctx, w, http.StatusNoContent)
 }
 
@@ -207,6 +264,46 @@ func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 
 	slog.InfoContext(ctx, "created list item successfully", slog.Any("list_item_id", item.ID))
 	response.JSON(ctx, w, http.StatusCreated, item)
+}
+
+// DeleteListItem handles the deletion of a list item
+//
+// @Summary Delete list item route
+// @Description Deletes an item
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param id path int true "List Item ID"
+// @Success 204
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 500 {object} response.ErrorResponse "failed to delete list item"
+// @Router /lists/item/{id} [delete]
+func (h *ListHandler) DeleteListItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listItemID := r.PathValue("id")
+	if listItemID == "" {
+		slog.ErrorContext(ctx, "failed to read list item id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to delete list item")
+		return
+	}
+
+	err = h.ListService.DeleteListItem(ctx, authContext.UserID, listItemID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to delete list item", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to delete list item")
+		return
+	}
+
+	slog.InfoContext(ctx, "deleted list item successfully", slog.Any("list_item_id", listItemID))
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // UpdateListItem handles updating of a list item
@@ -257,6 +354,7 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 // @Tags List
 // @Accept json
 // @Produce json
+// @Param id path int true "List Item ID"
 // @Param payload body request.SetListItemCompletedPayload true "Update list item is completed payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"

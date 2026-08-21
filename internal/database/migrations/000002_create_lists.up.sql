@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS lists (
 
 CREATE TABLE IF NOT EXISTS list_users (
     list_id UUID REFERENCES lists(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (list_id, user_id)
 );
