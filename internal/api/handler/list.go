@@ -205,6 +205,7 @@ func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.InfoContext(ctx, "created list item successfully", slog.Any("list_item_id", item.ID))
 	response.JSON(ctx, w, http.StatusCreated, item)
 }
 
@@ -245,6 +246,7 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	slog.InfoContext(ctx, "updated list item successfully", slog.Any("list_item_id", payload.ListItemID))
 	response.Status(ctx, w, http.StatusNoContent)
 }
 
@@ -293,6 +295,7 @@ func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	slog.InfoContext(ctx, "updated list item completed successful", slog.Any("list_item_id", listItemID))
 	response.Status(ctx, w, http.StatusNoContent)
 }
 
