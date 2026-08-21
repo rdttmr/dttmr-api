@@ -4,9 +4,9 @@ MAIN_DIR := ./cmd/api
 BIN_DIR := ./bin
 
 # Dynamically pull version and commit hash from Git
-VERSION := $(shell git describe --tags --always --dirty)
-COMMIT := $(shell git rev-parse --short HEAD)
-BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+VERSION ?= $(shell git describe --tags --always --dirty="-dev" 2>/dev/null || echo "dev")
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+BUILD_TIME ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Linker flags to strip symbols (-s -w) and inject build data into the binary
 LDFLAGS := -w -s \
@@ -16,7 +16,7 @@ LDFLAGS := -w -s \
 
 # Targets
 
-.PHONY: all help build run test test-cover lint fmt mod clean docker
+.PHONY: all help build build-api build-bootstrap run test test-cover lint fmt mod clean docker
 
 all: help
 
@@ -27,15 +27,23 @@ help:
 	@echo "Targets:"
 	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' |  sed -e 's/^/ /'
 
-## build: Compile the binary
-build:
-	@echo "Building $(APP_NAME) version $(VERSION)..."
-	@CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(APP_NAME) $(MAIN_DIR)
+## build: Compile all binaries
+build: build-api build-bootstrap
+
+## build-api: Compile the api binary
+build-api:
+	@echo "Building api..."
+	go build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/api $(MAIN_DIR)
+
+## build-bootstrap: Compile the bootstrap binary
+build-bootstrap:
+	@echo "Building bootstrap cli..."
+	go build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/bootstrap ./cmd/bootstrap
 
 ## run: Run the application directly
-run: build
+run: build-api
 	@echo "Starting $(APP_NAME)..."
-	@$(BIN_DIR)/$(APP_NAME)
+	@$(BIN_DIR)/api
 
 ## test: Run tests with race detector
 test:

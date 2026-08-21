@@ -21,7 +21,7 @@ import (
 
 var (
 	Version   = "dev"
-	Commit    = "none" // In the Makefile, we called this 'Commit' instead of 'Hash'
+	Commit    = "none"
 	BuildTime = "unknown"
 )
 
@@ -97,10 +97,6 @@ func run() error {
 			slog.Error("failed to close database connection", slog.Any("error", err))
 		}
 	}()
-
-	if err := database.RunMigrations(db); err != nil {
-		slog.Error("failed to run migrations", slog.Any("error", err))
-	}
 
 	srv := makeServer(db, cfg)
 	go func() {
