@@ -61,7 +61,7 @@ func (r *ListRepo) CreateList(ctx context.Context, name string, userIDs []string
 
 func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, name, lists.created_at, modified_at, COUNT(*) FROM lists INNER JOIN list_users ON lists.id=list_users.list_id WHERE list_users.user_id = $1",
+		"SELECT l.id, l.name, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true) FROM lists AS l INNER JOIN list_users ON lists.id=list_users.list_id WHERE list_users.user_id = $1",
 		userID,
 	)
 	if err != nil {
@@ -75,7 +75,7 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 	var lists []domain.List
 	for rows.Next() {
 		var l domain.List
-		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt)
+		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt, &l.TotalItems, &l.CompletedItems)
 		if err != nil {
 			return nil, err
 		}

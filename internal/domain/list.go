@@ -18,10 +18,12 @@ var (
 )
 
 type List struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	CreatedAt  time.Time `json:"created_at"`
-	ModifiedAt time.Time `json:"modified_at"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	CreatedAt      time.Time `json:"created_at"`
+	ModifiedAt     time.Time `json:"modified_at"`
+	TotalItems     int       `json:"total_items"`
+	CompletedItems int       `json:"completed_items"`
 }
 
 type ListItem struct {
