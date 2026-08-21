@@ -37,7 +37,7 @@ func TestListService_Create_Success(t *testing.T) {
 	repo.On("CreateList", mock.Anything, "My List", []string{"user1", "user2"}).Return(expectedList, nil)
 
 	service := domain.NewListService(repo)
-	list, err := service.Create(context.Background(), "My List", []string{"user1", "user2"})
+	list, err := service.CreateList(context.Background(), "My List", []string{"user1", "user2"})
 
 	require.NoError(t, err)
 	assert.Equal(t, expectedList, list)
@@ -48,7 +48,7 @@ func TestListService_Create_EmptyName(t *testing.T) {
 	repo := new(mockListRepo)
 	service := domain.NewListService(repo)
 
-	list, err := service.Create(context.Background(), "", []string{"user1"})
+	list, err := service.CreateList(context.Background(), "", []string{"user1"})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "list name must not be empty")
@@ -60,7 +60,7 @@ func TestListService_Create_EmptyUsers(t *testing.T) {
 	repo := new(mockListRepo)
 	service := domain.NewListService(repo)
 
-	list, err := service.Create(context.Background(), "My List", []string{})
+	list, err := service.CreateList(context.Background(), "My List", []string{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "users must have at least one associated user")
@@ -75,7 +75,7 @@ func TestListService_Create_RepoError(t *testing.T) {
 
 	service := domain.NewListService(repo)
 
-	list, err := service.Create(context.Background(), "My List", []string{"user1"})
+	list, err := service.CreateList(context.Background(), "My List", []string{"user1"})
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, expectedErr)
