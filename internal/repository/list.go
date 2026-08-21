@@ -58,7 +58,7 @@ func (r *ListRepo) CreateList(ctx context.Context, name string, userIDs []string
 	return list, nil
 }
 
-func (r *ListRepo) GetListsByUserID(ctx context.Context, userID string) ([]domain.List, error) {
+func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.db.QueryContext(ctx,
 		"SELECT id, name, created_at, modified_at FROM lists JOIN list_users ON list.id=list_users.list_id WHERE list_users.user_id = $1",
 		userID,

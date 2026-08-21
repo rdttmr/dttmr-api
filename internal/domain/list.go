@@ -35,7 +35,7 @@ type ListItem struct {
 
 type ListRepository interface {
 	CreateList(ctx context.Context, name string, userIDs []string) (*List, error)
-	GetListsByUserID(ctx context.Context, userID string) ([]List, error)
+	GetLists(ctx context.Context, userID string) ([]List, error)
 	AddUserToList(ctx context.Context, listID string, userID string) error
 	RemoveUserFromList(ctx context.Context, listID string, userID string) error
 	IsUserInList(ctx context.Context, listID string, userID string) (bool, error)
@@ -67,7 +67,7 @@ func (s *ListService) Create(ctx context.Context, authUserID string, name string
 }
 
 func (s *ListService) GetLists(ctx context.Context, authUserID string) ([]List, error) {
-	return s.repo.GetListsByUserID(ctx, authUserID)
+	return s.repo.GetLists(ctx, authUserID)
 }
 
 func (s *ListService) AddUserToList(ctx context.Context, authUserID string, listID string, userID string) error {
