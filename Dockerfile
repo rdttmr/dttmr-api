@@ -10,6 +10,8 @@ RUN go mod download
 COPY "./internal" "./internal"
 COPY "./cmd" "./cmd"
 COPY "Makefile" "./Makefile"
+# So make can fetch tag and commit
+COPY "./.git" "./.git"
 
 RUN make build
 

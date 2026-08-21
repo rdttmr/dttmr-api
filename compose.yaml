@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dttmr-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - /srv/dttmr-api/postgresql:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: dttmr-otel
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./docker/otel-config.yaml:/etc/otelcol/config.yaml
+    ports:
+      - "4317:4317"
+
+  bootstrap:
+    build: .
+    container_name: dttmr-bootstrap
+    env_file:
+      - .env
+    command: ["bootstrap", "--email=${ADMIN_EMAIL}", "--name=${ADMIN_USERNAME}", "--password=${ADMIN_PASSWORD}"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    container_name: dttmr-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      otel-collector:
+        condition: service_started
+      bootstrap:
+        condition: service_completed_successfully
