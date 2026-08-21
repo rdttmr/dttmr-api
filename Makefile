@@ -77,3 +77,8 @@ clean:
 docker:
 	@echo "Building Docker image for $(APP_NAME):$(VERSION)..."
 	@docker build -t $(APP_NAME):$(VERSION) -t $(APP_NAME):latest .
+
+## swag: Create swagger documentation
+swag:
+	@echo "Creating swagger documentation for $(APP_NAME)"
+	@swag init -g $(MAIN_DIR)/main.go
