@@ -57,6 +57,38 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 	response.JSON(ctx, w, http.StatusCreated, list)
 }
 
+// GetLists handles fetching lists for the current user
+//
+// @Summary Returns all lists of the user
+// @Description Retrieve all lists the user is a part of
+// @Tags List
+// @Accept json
+// @Produce json
+// @Success 200 {object} []domain.List
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to read lists"
+// @Router /api/v1/lists [get]
+func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	lists, err := h.ListService.GetLists(ctx, authContext.UserID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, lists)
+}
+
 // AddUserToList handles the user association to a list
 //
 // @Summary Add a user to the given list
@@ -186,6 +218,7 @@ func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 // @Param payload body request.UpdateListItemPayload true "Update list item payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to update list item"
 // @Router /api/v1/lists/item [put]
 func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +234,7 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 	authContext, err := domain.GetAuthContext(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to update list item")
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
 		return
 	}
 
@@ -213,4 +246,91 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(ctx, w, http.StatusNoContent, nil)
+}
+
+// SetListItemCompleted handles updating "is_completed" of a list item
+//
+// @Summary Updates "is_completed" of list item
+// @Description Update an existing list item, setting the "is_completed" field
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param payload body request.SetListItemCompletedPayload true "Update list item is completed payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to update list item"
+// @Router /api/v1/lists/item/{id} [post]
+func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listItemID := r.PathValue("id")
+	if listItemID == "" {
+		slog.ErrorContext(ctx, "failed to read list item id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	payload, err := request.DecodeJSON[request.SetListItemCompletedPayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode set list item completed payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.ListService.SetListItemCompleted(ctx, listItemID, authContext.UserID, payload.IsCompleted)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to set list item completed")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusNoContent, nil)
+}
+
+// GetListItems handles return all list items of a list
+//
+// @Summary Returns all items from a list
+// @Description Retrieve all list items of a list
+// @Tags List
+// @Accept json
+// @Produce json
+// @Success 200 {object} []domain.ListItem
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to read list items"
+// @Router /api/v1/lists/{id} [get]
+func (h *ListHandler) GetListItems(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listID := r.PathValue("id")
+	if listID == "" {
+		slog.ErrorContext(ctx, "failed to read list id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	items, err := h.ListService.GetListItems(ctx, authContext.UserID, listID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, items)
 }
