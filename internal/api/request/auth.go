@@ -8,3 +8,7 @@ type LoginPayload struct {
 type RefreshPayload struct {
 	RefreshToken string `json:"refresh_token"`
 }
+
+type LogoutPayload struct {
+	RefreshToken string `json:"refresh_token"`
+}

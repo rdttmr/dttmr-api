@@ -19,6 +19,8 @@ type AuthRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*AuthUser, error)
 	StoreRefreshToken(ctx context.Context, userID string, tokenHash string, expiresAt time.Time) error
 	ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error)
+	RevokeRefreshToken(ctx context.Context, tokenHash string) error
+	RevokeRefreshTokens(ctx context.Context, userID string) error
 }
 
 type AuthService struct {
@@ -100,6 +102,16 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPa
 	}
 
 	return s.issueTokens(ctx, authUser)
+}
+
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	tokenHash := hashToken(refreshToken)
+
+	return s.repo.RevokeRefreshToken(ctx, tokenHash)
+}
+
+func (s *AuthService) LogoutAllDevices(ctx context.Context, userID string) error {
+	return s.repo.RevokeRefreshTokens(ctx, userID)
 }
 
 type JWTClaims struct {

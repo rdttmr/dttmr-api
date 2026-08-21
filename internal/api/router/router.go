@@ -33,8 +33,11 @@ func NewMux(cfg Config) http.Handler {
 	apiMux := http.NewServeMux()
 	apiMux.HandleFunc("/", handler.DefaultHandler)
 	apiMux.HandleFunc("GET /health", handler.HealthHandler)
+
 	apiMux.HandleFunc("POST /login", authHandler.Login)
-	apiMux.HandleFunc("POST /auth/refresh", authHandler.Refresh)
+	apiMux.HandleFunc("POST /login/refresh", authHandler.Refresh)
+	apiMux.HandleFunc("POST /logout", authHandler.Logout)
+	apiMux.HandleFunc("POST /logout/all", authHandler.LogoutAllDevices)
 
 	apiMux.Handle("POST /users", protected(userHandler.CreateUser))
 

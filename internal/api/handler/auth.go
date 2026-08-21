@@ -60,7 +60,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} domain.TokenPair
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to refresh token"
-// @Router /api/v1/refresh [post]
+// @Router /api/v1/login/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -80,4 +80,66 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(ctx, w, http.StatusOK, tokens)
+}
+
+// Logout handles logging out a user
+//
+// @Summary Logout route
+// @Description Logout current user
+// @Tags Authorization
+// @Accept json
+// @Produce json
+// @Success 200 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to logout"
+// @Router /api/v1/logout [post]
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	payload, err := request.DecodeJSON[request.LogoutPayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode logout payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	err = h.AuthService.Logout(ctx, payload.RefreshToken)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to logout", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to logout")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, nil)
+}
+
+// LogoutAllDevices handles logging out a user on all devices
+//
+// @Summary Logout all route
+// @Description Logout user from all devices (revokes all refresh tokens)
+// @Tags Authorization
+// @Accept json
+// @Produce json
+// @Success 200 {object} nil
+// @Error 401 {object} response.ErrorResponse "failed to get auth context"
+// @Error 500 {object} response.ErrorResponse "failed to logout"
+// @Router /api/v1/logout/all [post]
+func (h *AuthHandler) LogoutAllDevices(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "failed to get auth context")
+		return
+	}
+
+	err = h.AuthService.LogoutAllDevices(ctx, authContext.UserID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to logout", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to logout")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, nil)
 }
