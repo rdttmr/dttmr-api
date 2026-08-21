@@ -25,7 +25,7 @@ type apiResponse struct {
 // @Accept json
 // @Produce json
 // @Success 200 {object} apiResponse
-// @Router /api/v1/ [get]
+// @Router / [get]
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

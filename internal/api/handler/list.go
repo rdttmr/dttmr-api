@@ -28,7 +28,7 @@ func NewListHandler(listService *domain.ListService) *ListHandler {
 // @Success 201 {object} domain.List
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to create list"
-// @Router /api/v1/lists [post]
+// @Router /lists [post]
 func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -68,7 +68,7 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to read lists"
-// @Router /api/v1/lists [get]
+// @Router /lists [get]
 func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -100,7 +100,7 @@ func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to add user to list"
-// @Router /api/v1/lists/user [post]
+// @Router /lists/user [post]
 func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -140,7 +140,7 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to remove user from list"
-// @Router /api/v1/lists/user [delete]
+// @Router /lists/user [delete]
 func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -180,7 +180,7 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to create list item"
-// @Router /api/v1/lists/item [post]
+// @Router /lists/item [post]
 func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -220,7 +220,7 @@ func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to update list item"
-// @Router /api/v1/lists/item [put]
+// @Router /lists/item [put]
 func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -261,7 +261,7 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to update list item"
-// @Router /api/v1/lists/items/{id} [post]
+// @Router /lists/items/{id} [post]
 func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -307,7 +307,7 @@ func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Reques
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to read list items"
-// @Router /api/v1/lists/{id} [get]
+// @Router /lists/{id} [get]
 func (h *ListHandler) GetListItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
