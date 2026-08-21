@@ -78,12 +78,8 @@ func (s *ListService) AddUserToList(ctx context.Context, authUserID string, list
 		return ErrUserIDEmpty
 	}
 
-	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
-	if err != nil {
+	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
 		return err
-	}
-	if !inList {
-		return ErrUserNotInList
 	}
 
 	return s.repo.AddUserToList(ctx, listID, userID)

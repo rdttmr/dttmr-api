@@ -11,6 +11,7 @@ import (
 
 type ListHandler struct {
 	ListService *domain.ListService
+	UserService *domain.UserService
 }
 
 func NewListHandler(listService *domain.ListService) *ListHandler {
@@ -99,6 +100,7 @@ func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 // @Param payload body request.AddUserToListPayload true "Add user to list payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to find email in system"
 // @Error 500 {object} response.ErrorResponse "failed to add user to list"
 // @Router /lists/user [post]
 func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
@@ -118,14 +120,21 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.ListService.AddUserToList(ctx, authContext.UserID, payload.ListID, payload.UserID)
+	user, err := h.UserService.GetUserByEmail(ctx, payload.Email)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get user by email", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to find email in system")
+		return
+	}
+
+	err = h.ListService.AddUserToList(ctx, authContext.UserID, payload.ListID, user.ID)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to add user to list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to add user to list")
 		return
 	}
 
-	slog.InfoContext(ctx, "added user to list successfully", slog.Any("list_id", payload.ListID), slog.Any("user_id", payload.UserID))
+	slog.InfoContext(ctx, "added user to list successfully", slog.Any("list_id", payload.ListID), slog.Any("email", user.Email))
 	response.Status(ctx, w, http.StatusNoContent)
 }
 
@@ -139,6 +148,7 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 // @Param payload body request.RemoveUserFromListPayload true "Remove user from list payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to find email in system"
 // @Error 500 {object} response.ErrorResponse "failed to remove user from list"
 // @Router /lists/user [delete]
 func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request) {
@@ -158,14 +168,21 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = h.ListService.RemoveUserFromList(ctx, authContext.UserID, payload.ListID, payload.UserID)
+	user, err := h.UserService.GetUserByEmail(ctx, payload.Email)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get user by email", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to find email in system")
+		return
+	}
+
+	err = h.ListService.RemoveUserFromList(ctx, authContext.UserID, payload.ListID, user.ID)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to remove user from list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to remove user from list")
 		return
 	}
 
-	slog.InfoContext(ctx, "removed user from list successfully", slog.Any("list_id", payload.ListID), slog.Any("user_id", payload.UserID))
+	slog.InfoContext(ctx, "removed user from list successfully", slog.Any("list_id", payload.ListID), slog.Any("email", user.Email))
 	response.Status(ctx, w, http.StatusNoContent)
 }
 

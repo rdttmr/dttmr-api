@@ -39,3 +39,17 @@ func (r *UserRepo) CreateUser(ctx context.Context, email string, name string, pa
 
 	return user, nil
 }
+
+func (r *UserRepo) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+	user := &domain.User{}
+
+	err := r.db.QueryRowContext(ctx,
+		"SELECT id, email, name FROM users WHERE email = $1",
+		email,
+	).Scan(&user.ID, &user.Email, &user.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return user, nil
+}

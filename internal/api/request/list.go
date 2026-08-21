@@ -7,12 +7,12 @@ type CreateListPayload struct {
 
 type AddUserToListPayload struct {
 	ListID string `json:"list_id"`
-	UserID string `json:"user_id"`
+	Email  string `json:"email"`
 }
 
 type RemoveUserFromListPayload struct {
 	ListID string `json:"list_id"`
-	UserID string `json:"user_id"`
+	Email  string `json:"email"`
 }
 
 type CreateListItemPayload struct {
