@@ -127,7 +127,7 @@ func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, lis
 		return ErrListItemTitleEmpty
 	}
 
-	if err := s.userAllowedToAccessList(ctx, authUserID, listItemID); err != nil {
+	if err := s.userAllowedToAccessListItem(ctx, authUserID, listItemID); err != nil {
 		return err
 	}
 

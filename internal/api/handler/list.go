@@ -28,7 +28,7 @@ func NewListHandler(listService *domain.ListService) *ListHandler {
 // @Success 201 {object} domain.List
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to create list"
-// @Router /api/v1/lists [post]
+// @Router /lists [post]
 func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -68,7 +68,7 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to read lists"
-// @Router /api/v1/lists [get]
+// @Router /lists [get]
 func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -100,7 +100,7 @@ func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to add user to list"
-// @Router /api/v1/lists/user [post]
+// @Router /lists/user [post]
 func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -126,7 +126,7 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.InfoContext(ctx, "added user to list successfully", slog.Any("list_id", payload.ListID), slog.Any("user_id", payload.UserID))
-	response.JSON(ctx, w, http.StatusNoContent, nil)
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // RemoveUserFromList handles the removal of a user association to a list
@@ -140,7 +140,7 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to remove user from list"
-// @Router /api/v1/lists/user [delete]
+// @Router /lists/user [delete]
 func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -166,7 +166,7 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 	}
 
 	slog.InfoContext(ctx, "removed user from list successfully", slog.Any("list_id", payload.ListID), slog.Any("user_id", payload.UserID))
-	response.JSON(ctx, w, http.StatusNoContent, nil)
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // CreateListItem handles creation of a new list item on a given list
@@ -180,7 +180,7 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to create list item"
-// @Router /api/v1/lists/item [post]
+// @Router /lists/item [post]
 func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -220,7 +220,7 @@ func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to update list item"
-// @Router /api/v1/lists/item [put]
+// @Router /lists/item [put]
 func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -238,14 +238,14 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.ListService.UpdateListItem(ctx, payload.ListItemID, authContext.UserID, payload.Title, payload.IsCompleted)
+	err = h.ListService.UpdateListItem(ctx, authContext.UserID, payload.ListItemID, payload.Title, payload.IsCompleted)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to update list item", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to update list item")
 		return
 	}
 
-	response.JSON(ctx, w, http.StatusNoContent, nil)
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // SetListItemCompleted handles updating "is_completed" of a list item
@@ -261,7 +261,7 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to update list item"
-// @Router /api/v1/lists/items/{id} [post]
+// @Router /lists/items/{id} [post]
 func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -286,14 +286,14 @@ func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = h.ListService.SetListItemCompleted(ctx, listItemID, authContext.UserID, payload.IsCompleted)
+	err = h.ListService.SetListItemCompleted(ctx, authContext.UserID, listItemID, payload.IsCompleted)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to set list item completed")
 		return
 	}
 
-	response.JSON(ctx, w, http.StatusNoContent, nil)
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // GetListItems handles return all list items of a list
@@ -307,7 +307,7 @@ func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Reques
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to read list items"
-// @Router /api/v1/lists/{id} [get]
+// @Router /lists/{id} [get]
 func (h *ListHandler) GetListItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -327,7 +327,7 @@ func (h *ListHandler) GetListItems(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.ListService.GetListItems(ctx, authContext.UserID, listID)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
+		slog.ErrorContext(ctx, "failed to read list items", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
 		return
 	}

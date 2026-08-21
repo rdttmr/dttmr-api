@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS list_users (
     PRIMARY KEY (list_id, user_id)
 );
 
+CREATE UNIQUE INDEX idx_list_users_list_id_user_id ON list_users(list_id, user_id);
 CREATE INDEX idx_list_users_user_id ON list_users(user_id);
 
 CREATE TABLE IF NOT EXISTS list_items (

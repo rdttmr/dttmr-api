@@ -28,7 +28,7 @@ func NewAuthHandler(authService *domain.AuthService) *AuthHandler {
 // @Success 200 {object} domain.TokenPair
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to login"
-// @Router /api/v1/login [post]
+// @Router /login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -60,7 +60,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} domain.TokenPair
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to refresh token"
-// @Router /api/v1/login/refresh [post]
+// @Router /login/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -92,7 +92,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to logout"
-// @Router /api/v1/logout [post]
+// @Router /logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -123,7 +123,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} nil
 // @Error 401 {object} response.ErrorResponse "failed to get auth context"
 // @Error 500 {object} response.ErrorResponse "failed to logout"
-// @Router /api/v1/logout/all [post]
+// @Router /logout/all [post]
 func (h *AuthHandler) LogoutAllDevices(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
