@@ -196,6 +196,7 @@ func (r *ListRepo) GetListItems(ctx context.Context, listID string) ([]domain.Li
 			return nil, err
 		}
 
+		l.ListID = listID
 		items = append(items, l)
 	}
 
