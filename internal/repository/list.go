@@ -61,7 +61,7 @@ func (r *ListRepo) CreateList(ctx context.Context, name string, userIDs []string
 
 func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, name, lists.created_at, modified_at FROM lists INNER JOIN list_users ON lists.id=list_users.list_id WHERE list_users.user_id = $1",
+		"SELECT id, name, lists.created_at, modified_at, COUNT(*) FROM lists INNER JOIN list_users ON lists.id=list_users.list_id WHERE list_users.user_id = $1",
 		userID,
 	)
 	if err != nil {
@@ -177,7 +177,7 @@ func (r *ListRepo) SetListItemCompleted(ctx context.Context, listItemID string, 
 
 func (r *ListRepo) GetListItems(ctx context.Context, listID string) ([]domain.ListItem, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY modified_at DESC",
+		"SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at DESC",
 		listID,
 	)
 	if err != nil {
