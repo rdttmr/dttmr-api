@@ -35,7 +35,7 @@ type ListItem struct {
 
 type ListRepository interface {
 	CreateList(ctx context.Context, name string, userIDs []string) (*List, error)
-	GetListsByUserID(ctx context.Context, userID string) ([]domain.List, error)
+	GetListsByUserID(ctx context.Context, userID string) ([]List, error)
 	AddUserToList(ctx context.Context, listID string, userID string) error
 	RemoveUserFromList(ctx context.Context, listID string, userID string) error
 	IsUserInList(ctx context.Context, listID string, userID string) (bool, error)
