@@ -57,6 +57,7 @@ func (r *AuthRepo) StoreRefreshToken(ctx context.Context, userID string, tokenHa
 
 	return nil
 }
+
 func (r *AuthRepo) ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error) {
 	var userID string
 	err := r.db.QueryRowContext(ctx,
@@ -71,4 +72,22 @@ func (r *AuthRepo) ConsumeRefreshToken(ctx context.Context, tokenHash string) (s
 	}
 
 	return userID, nil
+}
+
+func (r *AuthRepo) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM refresh_tokens WHERE token_hash = $1", tokenHash)
+	if err != nil {
+		return fmt.Errorf("failed to revoke refresh token: %w", err)
+	}
+
+	return nil
+}
+
+func (r *AuthRepo) RevokeRefreshTokens(ctx context.Context, userID string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM refresh_tokens WHERE user_id = $1", userID)
+	if err != nil {
+		return fmt.Errorf("failed to revoke refresh tokens: %w", err)
+	}
+
+	return nil
 }

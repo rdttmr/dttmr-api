@@ -58,6 +58,31 @@ func (r *ListRepo) CreateList(ctx context.Context, name string, userIDs []string
 	return list, nil
 }
 
+func (r *ListRepo) GetListsByUserID(ctx context.Context, userID string) ([]domain.List, error) {
+	rows, err := r.db.QueryContext(ctx,
+		"SELECT id, name, created_at, modified_at FROM lists JOIN list_users ON list.id=list_users.list_id WHERE list_users.user_id = $1",
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get list items: %w", err)
+	}
+	defer rows.Close()
+
+	var lists []domain.List
+	for rows.Next() {
+		var l domain.List
+		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		lists = append(lists, l)
+	}
+
+	return lists, nil
+
+}
+
 func (r *ListRepo) AddUserToList(ctx context.Context, listID string, userID string) error {
 	_, err := r.db.ExecContext(ctx,
 		"INSERT INTO list_users (list_id, user_id) VALUES ($1, $2)",
@@ -133,4 +158,39 @@ func (r *ListRepo) UpdateListItem(ctx context.Context, listItemID string, title 
 	}
 
 	return nil
+}
+
+func (r *ListRepo) SetListItemCompleted(ctx context.Context, listItemID string, isCompleted bool) error {
+	_, err := r.db.ExecContext(ctx, "UPDATE list_items SET is_completed = $1, modified_at = NOW() WHERE id = $2",
+		isCompleted, listItemID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to complete list item: %w", err)
+	}
+
+	return nil
+}
+
+func (r *ListRepo) GetListItems(ctx context.Context, listID string) ([]domain.ListItem, error) {
+	rows, err := r.db.QueryContext(ctx,
+		"SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1",
+		listID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get list items: %w", err)
+	}
+	defer rows.Close()
+
+	var items []domain.ListItem
+	for rows.Next() {
+		var l domain.ListItem
+		err = rows.Scan(&l.ID, &l.Title, &l.IsCompleted, &l.CreatedAt, &l.ModifiedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, l)
+	}
+
+	return items, nil
 }
