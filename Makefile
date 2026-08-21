@@ -81,4 +81,4 @@ docker:
 ## swag: Create swagger documentation
 swag:
 	@echo "Creating swagger documentation for $(APP_NAME)"
-	@swag init -g $(MAIN_DIR)/main.go
+	@swag init --outputTypes json,yaml -g $(MAIN_DIR)/main.go
