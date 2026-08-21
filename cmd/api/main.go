@@ -19,6 +19,12 @@ import (
 	"github.com/robindittmar/dttmr-api/internal/telemetry"
 )
 
+var (
+	Version   = "dev"
+	Commit    = "none" // In the Makefile, we called this 'Commit' instead of 'Hash'
+	BuildTime = "unknown"
+)
+
 // @title dttmr-api
 // @version 0.1.0
 // @description API documentation for dttmr-api service.
@@ -37,29 +43,32 @@ import (
 // @in Header
 // @name Authorization
 func main() {
-	serviceName := "dttmr-api"
-	serviceVersion := "0.1.0"
-
-	if err := run(serviceName, serviceVersion); err != nil {
+	if err := run(); err != nil {
 		slog.Error("service crashed")
 		os.Exit(1)
 	}
 }
 
-func run(serviceName string, serviceVersion string) error {
+func run() error {
+	serivceName := "dttmr-api"
 	time.Local, _ = time.LoadLocation("UTC")
 
 	_ = godotenv.Load(".env")
 	setupLogging()
 
-	slog.Info("starting service", slog.String("service", serviceName), slog.String("version", serviceVersion))
+	slog.Info("starting service",
+		slog.String("service", serivceName),
+		slog.String("version", Version),
+		slog.String("commit", Commit),
+		slog.String("build_time", BuildTime),
+	)
 	defer slog.Info("service shutdown!")
 
 	cfg := config.Load()
 
 	telCfg := telemetry.Config{
-		ServiceName:    serviceName,
-		ServiceVersion: serviceVersion,
+		ServiceName:    serivceName,
+		ServiceVersion: Version,
 		Endpoint:       cfg.OTLPEndpoint,
 		Environment:    cfg.Environment,
 	}

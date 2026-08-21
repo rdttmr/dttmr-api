@@ -104,7 +104,7 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 // @Tags List
 // @Accept json
 // @Produce json
-// @Param payload body request.RemoveUserFromList true "Remove user from list payload"
+// @Param payload body request.RemoveUserFromListPayload true "Remove user from list payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to remove user from list"

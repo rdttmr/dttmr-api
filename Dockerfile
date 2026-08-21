@@ -7,15 +7,16 @@ RUN go mod download
 
 COPY "./internal" "./internal"
 COPY "./cmd" "./cmd"
+COPY "Makefile" "./Makefile"
 
-RUN go build -o ./server github.com/robindittmar/dttmr-api/cmd/api-server
+RUN make build
 
 FROM debian:latest
 
 WORKDIR /app
 
 COPY .env.docker .env
-COPY --from=build /app/server /app/server
+COPY --from=build /app/bin/dttmr-api /app/dttmr-api
 
 EXPOSE 8080
-CMD ["/app/server"]
+CMD ["/app/dttmr-api"]
