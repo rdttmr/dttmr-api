@@ -122,7 +122,7 @@ func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 
 	lists, err := h.ListService.GetLists(ctx, authContext.UserID)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
+		slog.ErrorContext(ctx, "failed to get lists", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
 		return
 	}
