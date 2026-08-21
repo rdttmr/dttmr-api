@@ -261,7 +261,7 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to update list item"
-// @Router /api/v1/lists/item/{id} [post]
+// @Router /api/v1/lists/items/{id} [post]
 func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

@@ -28,7 +28,7 @@ func NewUserHandler(userService *domain.UserService) *UserHandler {
 // @Success 201 {object} domain.User
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to create user"
-// @Router /api/v1/user [post]
+// @Router /api/v1/users [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
