@@ -70,7 +70,7 @@ func (r *ListRepo) DeleteList(ctx context.Context, listID string) error {
 
 func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT l.id, l.name, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true) FROM lists AS l INNER JOIN list_users ON lists.id=list_users.list_id WHERE list_users.user_id = $1",
+		"SELECT l.id, l.name, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true) FROM lists AS l INNER JOIN list_users ON l.id=list_users.list_id WHERE list_users.user_id = $1",
 		userID,
 	)
 	if err != nil {
