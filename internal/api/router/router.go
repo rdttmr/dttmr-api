@@ -47,8 +47,8 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("DELETE /lists/user", protected(listHandler.RemoveUserFromList))
 	apiMux.Handle("POST /lists/item", protected(listHandler.CreateListItem))
 	apiMux.Handle("PUT /lists/item", protected(listHandler.UpdateListItem))
-	apiMux.Handle("POST /list/items/{id}", protected(listHandler.SetListItemCompleted))
-	apiMux.Handle("GET /list/{id}", protected(listHandler.GetListItems))
+	apiMux.Handle("POST /lists/items/{id}", protected(listHandler.SetListItemCompleted))
+	apiMux.Handle("GET /lists/{id}", protected(listHandler.GetListItems))
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiMux))
