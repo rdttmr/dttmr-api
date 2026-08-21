@@ -11,7 +11,6 @@ var (
 	ErrListIDEmpty        = errors.New("list id must not be empty")
 	ErrListNameEmpty      = errors.New("list name must not be empty")
 	ErrUserIDEmpty        = errors.New("user id must not be empty")
-	ErrUserIDsEmpty       = errors.New("user ids must not be empty")
 	ErrListItemIDEmpty    = errors.New("list item id must not be empty")
 	ErrListItemTitleEmpty = errors.New("list item title must not be empty")
 	ErrUserNotInList      = errors.New("user not in list")
@@ -52,10 +51,6 @@ func NewListService(r ListRepository) *ListService {
 }
 
 func (s *ListService) Create(ctx context.Context, authUserID string, name string, userIDs []string) (*List, error) {
-	if len(userIDs) == 0 {
-		return nil, ErrUserIDsEmpty
-	}
-
 	if name == "" {
 		return nil, ErrListNameEmpty
 	}
