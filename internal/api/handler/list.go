@@ -126,7 +126,7 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.InfoContext(ctx, "added user to list successfully", slog.Any("list_id", payload.ListID), slog.Any("user_id", payload.UserID))
-	response.JSON(ctx, w, http.StatusNoContent, nil)
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // RemoveUserFromList handles the removal of a user association to a list
@@ -166,7 +166,7 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 	}
 
 	slog.InfoContext(ctx, "removed user from list successfully", slog.Any("list_id", payload.ListID), slog.Any("user_id", payload.UserID))
-	response.JSON(ctx, w, http.StatusNoContent, nil)
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // CreateListItem handles creation of a new list item on a given list
@@ -238,14 +238,14 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.ListService.UpdateListItem(ctx, payload.ListItemID, authContext.UserID, payload.Title, payload.IsCompleted)
+	err = h.ListService.UpdateListItem(ctx, authContext.UserID, payload.ListItemID, payload.Title, payload.IsCompleted)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to update list item", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to update list item")
 		return
 	}
 
-	response.JSON(ctx, w, http.StatusNoContent, nil)
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // SetListItemCompleted handles updating "is_completed" of a list item
@@ -286,14 +286,14 @@ func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = h.ListService.SetListItemCompleted(ctx, listItemID, authContext.UserID, payload.IsCompleted)
+	err = h.ListService.SetListItemCompleted(ctx, authContext.UserID, listItemID, payload.IsCompleted)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to set list item completed")
 		return
 	}
 
-	response.JSON(ctx, w, http.StatusNoContent, nil)
+	response.Status(ctx, w, http.StatusNoContent)
 }
 
 // GetListItems handles return all list items of a list
@@ -327,7 +327,7 @@ func (h *ListHandler) GetListItems(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.ListService.GetListItems(ctx, authContext.UserID, listID)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to set list item completed", slog.Any("error", err))
+		slog.ErrorContext(ctx, "failed to read list items", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
 		return
 	}

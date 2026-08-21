@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -60,11 +61,14 @@ func (r *ListRepo) CreateList(ctx context.Context, name string, userIDs []string
 
 func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, name, created_at, modified_at FROM lists JOIN list_users ON list.id=list_users.list_id WHERE list_users.user_id = $1",
+		"SELECT id, name, lists.created_at, modified_at FROM lists INNER JOIN list_users ON lists.id=list_users.list_id WHERE list_users.user_id = $1",
 		userID,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get list items: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get lists: %w", err)
 	}
 	defer rows.Close()
 
@@ -177,6 +181,9 @@ func (r *ListRepo) GetListItems(ctx context.Context, listID string) ([]domain.Li
 		listID,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to get list items: %w", err)
 	}
 	defer rows.Close()
