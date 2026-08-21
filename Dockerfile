@@ -19,7 +19,6 @@ RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
-COPY .env.docker .env
 COPY --from=build /app/bin/api /usr/local/bin/api
 COPY --from=build /app/bin/bootstrap /usr/local/bin/bootstrap
 
