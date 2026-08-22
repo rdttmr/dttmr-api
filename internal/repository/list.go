@@ -81,7 +81,7 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 	}
 	defer rows.Close()
 
-	var lists []domain.List
+	lists := make([]domain.List, 0, 16)
 	for rows.Next() {
 		var l domain.List
 		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt, &l.TotalItems, &l.CompletedItems)
@@ -206,7 +206,7 @@ func (r *ListRepo) GetListItems(ctx context.Context, listID string) ([]domain.Li
 	}
 	defer rows.Close()
 
-	var items []domain.ListItem
+	items := make([]domain.ListItem, 0, 32)
 	for rows.Next() {
 		var l domain.ListItem
 		err = rows.Scan(&l.ID, &l.Title, &l.IsCompleted, &l.CreatedAt, &l.ModifiedAt)
