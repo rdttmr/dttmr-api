@@ -13,7 +13,7 @@ import (
 )
 
 func RunMigrations(db *sql.DB, migrationFS fs.FS) error {
-	sourceDriver, err := iofs.New(migrationFS, "migrations")
+	sourceDriver, err := iofs.New(migrationFS, ".")
 	if err != nil {
 		return fmt.Errorf("failed to load embedded migrations: %w", err)
 	}
