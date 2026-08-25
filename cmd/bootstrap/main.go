@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/robindittmar/dttmr-api/internal/config"
 	"github.com/robindittmar/dttmr-api/internal/database"
+	"github.com/robindittmar/dttmr-api/internal/database/migrations"
 	"github.com/robindittmar/dttmr-api/internal/domain"
 	"github.com/robindittmar/dttmr-api/internal/repository"
 )
@@ -51,7 +52,7 @@ func main() {
 		}
 	}()
 
-	if err := database.RunMigrations(db); err != nil {
+	if err := database.RunMigrations(db, migrations.MigrationFS); err != nil {
 		slog.Error("failed to run migrations", slog.Any("error", err))
 		os.Exit(1)
 	}
