@@ -149,11 +149,11 @@ func (s *AuthService) issueTokens(ctx context.Context, authUser *AuthUser) (Toke
 
 func (s *AuthService) GenerateAccessToken(authUser *AuthUser) (string, error) {
 	claims := JWTClaims{
-		UserID: authUser.ID,
-		Email:  authUser.Email,
-		Name:   authUser.Name,
+		UserID:    authUser.ID,
+		Email:     authUser.Email,
+		Name:      authUser.Name,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 15)),
 	}
-	claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute * 15))
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
