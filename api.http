@@ -1,0 +1,72 @@
+### POST login
+POST http://localhost:8080/api/v1/login
+Content-Type: application/json
+
+{
+    "email": "admin@example.com",
+    "password": "12345"
+}
+
+> {% client.global.set("access_token", response.body.access_token); %}
+
+###
+
+POST http://localhost:8080/api/v1/lists
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "name": "test_list"
+}
+
+###
+
+GET http://localhost:8080/api/v1/lists
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+}
+
+###
+
+GET http://localhost:8080/api/v1/lists/e817465a-d75d-420b-9d4a-610496ed3bc7
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+}
+
+
+###
+
+POST http://localhost:8080/api/v1/lists/item
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "list_id": "cd2c280a-05fa-4ea0-b350-0d3f972b9777",
+  "title": "hello"
+}
+
+###
+
+PUT http://localhost:8080/api/v1/lists/item
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "list_item_id": "3b0666b0-bfc5-41e2-8c22-e3437da40298",
+  "title": "hello 2",
+  "is_completed": true
+}
+
+###
+
+POST http://localhost:8080/api/v1/lists/items/3b0666b0-bfc5-41e2-8c22-e3437da40298
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "is_completed": false
+}
