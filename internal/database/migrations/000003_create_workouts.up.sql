@@ -7,7 +7,8 @@ CREATE TABLE exercises (
                 'floor',
                 'rings',
                 'pull_up_bar',
-                'dip_bars',
+                'parallel_bars',
+                'low_bar',
                 'parallettes',
                 'resistance_band'
         ]::TEXT[]),
@@ -73,3 +74,28 @@ CREATE TABLE workout_sets (
 
 CREATE INDEX sets_workout_idx ON workout_sets (workout_id, logged_at);
 CREATE INDEX sets_exercise_ifx ON workout_sets (exercise_id, logged_at DESC);
+
+INSERT INTO exercises (name, metric, load, tags, equipment) VALUES
+    ('Push-up',              'reps',    'bodyweight', '{push,chest,triceps}', '{floor,rings,parallettes}'),
+    ('Diamond push-up',      'reps',    'bodyweight', '{push,triceps}', '{floor,rings,parallettes}'),
+    ('Pseudo planche push-up','reps',   'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
+    ('Pike push-up',         'reps',    'bodyweight', '{push,shoulders}', '{floor,rings,parallettes}'),
+    ('Dip',                  'reps',    'bodyweight', '{push,chest,triceps}', '{rings,parallel_bars}'),
+    ('Handstand hold',       'seconds', 'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
+    ('Handstand Push-up',       'reps', 'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
+    ('Pull-up',              'reps',    'bodyweight', '{pull,back,biceps}', '{rings,pull_up_bar}'),
+    ('Chin-up',              'reps',    'bodyweight', '{pull,back,biceps}', '{rings,pull_up_bar}'),
+    ('Inverted row',         'reps',    'bodyweight', '{pull,back}', '{rings,parallel_bars,low_bar}'),
+    ('Muscle-up',            'reps',    'bodyweight', '{pull,push,skill}', '{rings,pull_up_bar}'),
+    ('Dead hang',            'seconds', 'bodyweight', '{pull,grip}', '{rings,pull_up_bar}'),
+    ('Front lever hold',     'seconds', 'bodyweight', '{pull,core,skill}', '{rings,pull_up_bar,low_bar}'),
+    ('Pistol squat',         'reps',    'bodyweight', '{legs}', '{floor}'),
+    ('Bulgarian split squat','reps',    'bodyweight', '{legs}', '{floor}'),
+    ('Nordic curl',          'reps',    'bodyweight', '{legs,hamstrings}', '{floor}'),
+    ('Calf raise',           'reps',    'bodyweight', '{legs}', '{floor}'),
+    ('Plank',                'seconds', 'bodyweight', '{core}', '{floor}'),
+    ('Hollow body hold',     'seconds', 'bodyweight', '{core}', '{floor}'),
+    ('L-sit',                'seconds', 'bodyweight', '{core,skill}', '{floor,parallettes,parallel_bars}'),
+    ('Hanging leg raise',    'reps',    'bodyweight', '{core}', '{rings,pull_up_bar}'),
+    ('Face pull',            'reps',    'bodyweight', '{pull,shoulders}', '{rings,resistance_band}'),
+    ('Lateral raise',        'reps',    'absolute',   '{shoulders,isolation}', '{floor}'),
