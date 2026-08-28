@@ -2,9 +2,9 @@ package database
 
 import (
 	"database/sql"
-	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -12,11 +12,8 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
-//go:embed migrations/*.sql
-var migrationFS embed.FS
-
-func RunMigrations(db *sql.DB) error {
-	sourceDriver, err := iofs.New(migrationFS, "migrations")
+func RunMigrations(db *sql.DB, migrationFS fs.FS) error {
+	sourceDriver, err := iofs.New(migrationFS, ".")
 	if err != nil {
 		return fmt.Errorf("failed to load embedded migrations: %w", err)
 	}
