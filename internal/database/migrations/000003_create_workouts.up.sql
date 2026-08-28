@@ -13,12 +13,12 @@ CREATE TABLE exercises (
                 'resistance_band'
         ]::TEXT[]),
     metric TEXT NOT NULL DEFAULT 'reps'
-        CHECK metric IN ('reps', 'seconds'),
+        CHECK (metric IN ('reps', 'seconds')),
     load TEXT NOT NULL DEFAULT 'bodyweight'
-        CHECK load IN ('bodyweight', 'absolute'),
+        CHECK (load IN ('bodyweight', 'absolute')),
     tags TEXT[] NOT NULL DEFAULT '{}', -- push/pull/legs/core/skill/shoulders/...
     notes TEXT,
-    hidden NOT NULL DEFAULT FALSE,
+    hidden BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -98,4 +98,4 @@ INSERT INTO exercises (name, metric, load, tags, equipment) VALUES
     ('L-sit',                'seconds', 'bodyweight', '{core,skill}', '{floor,parallettes,parallel_bars}'),
     ('Hanging leg raise',    'reps',    'bodyweight', '{core}', '{rings,pull_up_bar}'),
     ('Face pull',            'reps',    'bodyweight', '{pull,shoulders}', '{rings,resistance_band}'),
-    ('Lateral raise',        'reps',    'absolute',   '{shoulders,isolation}', '{floor}'),
+    ('Lateral raise',        'reps',    'absolute',   '{shoulders,isolation}', '{floor}');
