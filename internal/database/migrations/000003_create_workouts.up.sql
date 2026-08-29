@@ -43,6 +43,7 @@ CREATE TABLE template_exercises (
     template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
     exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     position SMALLINT NOT NULL,
+    group_no SMALLINT,
     target_sets SMALLINT NOT NULL,
     target_reps SMALLINT,
     target_seconds SMALLINT,
