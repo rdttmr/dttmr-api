@@ -72,6 +72,8 @@ CREATE TABLE workout_sets (
     reps SMALLINT,
     seconds SMALLINT,
     weight_kg NUMERIC(5,2),
+    type TEXT NOT NULL DEFAULT 'working'
+        CHECK (metric IN ('warm-up', 'working', 'drop')),
     note TEXT,
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
