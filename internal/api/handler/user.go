@@ -61,6 +61,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 // @Param payload body request.ChangePasswordPayload true "Change password payload"
 // @Success 204
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "could not authenticate with current password"
 // @Error 500 {object} response.ErrorResponse "could not get auth context"
 // @Error 500 {object} response.ErrorResponse "failed to change password"
 // @Router /users/password [post]
@@ -81,7 +82,14 @@ func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.UserService.ChangePassword(ctx, authContext.UserID, payload.Password)
+	_, err = h.AuthService.Authenticate(ctx, authContext.Email, payload.OldPassword)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to authenticate with current password", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "could not authenticate with current password")
+		return
+	}
+
+	err = h.UserService.ChangePassword(ctx, authContext.UserID, payload.NewPassword)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to change password", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to change password")

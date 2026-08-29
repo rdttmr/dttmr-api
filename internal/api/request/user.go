@@ -7,5 +7,6 @@ type CreateUserPayload struct {
 }
 
 type ChangePasswordPayload struct {
-	Password string `json:"password"`
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
 }
