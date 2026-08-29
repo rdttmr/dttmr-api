@@ -16,13 +16,13 @@ type Config struct {
 }
 
 func NewMux(cfg Config) http.Handler {
-	userRepo := repository.NewUserRepo(cfg.Database)
-	userService := domain.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService)
-
 	authRepo := repository.NewAuthRepo(cfg.Database)
 	authService := domain.NewAuthService(authRepo, []byte(cfg.JWTSecret))
 	authHandler := handler.NewAuthHandler(authService)
+
+	userRepo := repository.NewUserRepo(cfg.Database)
+	userService := domain.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userService, authService)
 
 	listRepo := repository.NewListRepo(cfg.Database)
 	listService := domain.NewListService(listRepo)
@@ -40,6 +40,7 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.HandleFunc("POST /logout/all", authHandler.LogoutAllDevices)
 
 	apiMux.Handle("POST /users", protected(userHandler.CreateUser))
+	apiMux.Handle("POST /users/password", protected(userHandler.ChangePassword))
 
 	apiMux.Handle("POST /lists", protected(listHandler.CreateList))
 	apiMux.Handle("DELETE /lists/{id}", protected(listHandler.DeleteList))
