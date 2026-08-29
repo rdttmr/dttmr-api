@@ -1,6 +1,7 @@
 CREATE TABLE exercises (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     equipment TEXT[] NOT NULL DEFAULT '{}'
         CHECK (
             equipment <@ ARRAY [
