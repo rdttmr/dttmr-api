@@ -71,7 +71,6 @@ CREATE TABLE workouts (
     template_id UUID REFERENCES templates(id) ON DELETE SET NULL,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
-    rpe smallint CHECK (rpe BETWEEN 1 AND 10),
     notes TEXT,
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ
@@ -88,6 +87,7 @@ CREATE TABLE workout_sets (
     reps SMALLINT,
     seconds SMALLINT,
     weight_kg NUMERIC(5,2),
+    rpe SMALLINT CHECK (rpe BETWEEN 1 AND 10),
     type TEXT NOT NULL DEFAULT 'working'
         CHECK (type IN ('warm-up', 'working', 'drop')),
     note TEXT,
