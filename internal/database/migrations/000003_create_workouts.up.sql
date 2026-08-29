@@ -34,7 +34,7 @@ CREATE TABLE templates (
     name TEXT NOT NULL,
     notes TEXT,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -42,9 +42,23 @@ CREATE TABLE template_exercises (
     template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
     exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     position SMALLINT NOT NULL,
-    target TEXT,
+    target_sets SMALLINT NOT NULL,
+    target_reps SMALLINT,
+    target_seconds SMALLINT,
+    notes TEXT,
 
     PRIMARY KEY (template_id, exercise_id)
+
+    CONSTRAINT target_has_number CHECK (target_reps IS NOT NULL OR target_seconds IS NOT NULL)
+);
+
+
+CREATE TABLE bodyweight_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    bodyweight_kg NUMERIC(5,2) NOT NULL,
+    logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
@@ -56,7 +70,6 @@ CREATE TABLE workouts (
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
     rpe smallint CHECK (rpe BETWEEN 1 AND 10),
-    bodyweight_kg NUMERIC(5,2),
     notes TEXT
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
