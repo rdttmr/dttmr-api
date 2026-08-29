@@ -47,7 +47,7 @@ CREATE TABLE template_exercises (
     target_seconds SMALLINT,
     notes TEXT,
 
-    PRIMARY KEY (template_id, exercise_id)
+    PRIMARY KEY (template_id, exercise_id),
 
     CONSTRAINT target_has_number CHECK (target_reps IS NOT NULL OR target_seconds IS NOT NULL)
 );
@@ -70,7 +70,7 @@ CREATE TABLE workouts (
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
     rpe smallint CHECK (rpe BETWEEN 1 AND 10),
-    notes TEXT
+    notes TEXT,
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -88,7 +88,7 @@ CREATE TABLE workout_sets (
     type TEXT NOT NULL DEFAULT 'working'
         CHECK (metric IN ('warm-up', 'working', 'drop')),
     note TEXT,
-    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT set_has_number CHECK (reps IS NOT NULL OR seconds IS NOT NULL)
 );
