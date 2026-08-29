@@ -47,6 +47,7 @@ CREATE TABLE template_exercises (
     target_reps SMALLINT,
     target_seconds SMALLINT,
     notes TEXT,
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (template_id, exercise_id),
 
