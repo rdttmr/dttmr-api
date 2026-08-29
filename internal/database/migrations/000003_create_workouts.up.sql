@@ -32,6 +32,7 @@ CREATE TABLE templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     notes TEXT,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -48,6 +49,7 @@ CREATE TABLE template_exercises (
 CREATE TABLE workouts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     template_id UUID REFERENCES templates(id) ON DELETE SET NULL,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
@@ -82,12 +84,14 @@ INSERT INTO exercises (name, metric, load, tags, equipment) VALUES
     ('Pike push-up',         'reps',    'bodyweight', '{push,shoulders}', '{floor,rings,parallettes}'),
     ('Dip',                  'reps',    'bodyweight', '{push,chest,triceps}', '{rings,parallel_bars}'),
     ('Handstand hold',       'seconds', 'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
-    ('Handstand Push-up',       'reps', 'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
+    ('Handstand Push-up',    'reps',    'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
     ('Pull-up',              'reps',    'bodyweight', '{pull,back,biceps}', '{rings,pull_up_bar}'),
     ('Chin-up',              'reps',    'bodyweight', '{pull,back,biceps}', '{rings,pull_up_bar}'),
     ('Inverted row',         'reps',    'bodyweight', '{pull,back}', '{rings,parallel_bars,low_bar}'),
+    ('Inverted deadlift',    'reps',    'bodyweight', '{pull,back}', '{rings,parallel_bars,low_bar,pull_up_bar}'),
     ('Muscle-up',            'reps',    'bodyweight', '{pull,push,skill}', '{rings,pull_up_bar}'),
     ('Dead hang',            'seconds', 'bodyweight', '{pull,grip}', '{rings,pull_up_bar}'),
+    ('One arm dead hang',    'seconds', 'bodyweight', '{pull,grip}', '{rings,pull_up_bar}'),
     ('Front lever hold',     'seconds', 'bodyweight', '{pull,core,skill}', '{rings,pull_up_bar,low_bar}'),
     ('Pistol squat',         'reps',    'bodyweight', '{legs}', '{floor}'),
     ('Bulgarian split squat','reps',    'bodyweight', '{legs}', '{floor}'),
