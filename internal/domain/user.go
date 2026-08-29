@@ -8,6 +8,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	ErrUserIDMissing   = errors.New("user id is missing")
+	ErrEmailMissing    = errors.New("email is required")
+	ErrNameMissing     = errors.New("name is required")
+	ErrPasswordMissing = errors.New("password is required")
+)
+
 type User struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
@@ -17,6 +24,7 @@ type User struct {
 
 type UserRepository interface {
 	CreateUser(ctx context.Context, email string, name string, passwordHash string) (*User, error)
+	ChangePassword(ctx context.Context, userID string, passwordHash string) error
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 }
 
@@ -30,13 +38,13 @@ func NewUserService(r UserRepository) *UserService {
 
 func (s *UserService) CreateUser(ctx context.Context, email string, name string, password string) (*User, error) {
 	if len(email) == 0 {
-		return nil, errors.New("email is required")
+		return nil, ErrEmailMissing
 	}
 	if len(name) == 0 {
-		return nil, errors.New("name is required")
+		return nil, ErrNameMissing
 	}
 	if len(password) == 0 {
-		return nil, errors.New("password is required")
+		return nil, ErrPasswordMissing
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -45,6 +53,22 @@ func (s *UserService) CreateUser(ctx context.Context, email string, name string,
 	}
 
 	return s.repo.CreateUser(ctx, email, name, string(hash))
+}
+
+func (s *UserService) ChangePassword(ctx context.Context, userID string, password string) error {
+	if len(userID) == 0 {
+		return ErrUserIDMissing
+	}
+	if len(password) == 0 {
+		return ErrPasswordMissing
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.ChangePassword(ctx, userID, string(hash))
 }
 
 func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*User, error) {
