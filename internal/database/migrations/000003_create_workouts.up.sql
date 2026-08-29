@@ -1,7 +1,7 @@
 CREATE TABLE exercises (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE RESTRICT,
     equipment TEXT[] NOT NULL DEFAULT '{}'
         CHECK (
             equipment <@ ARRAY [
@@ -25,7 +25,8 @@ CREATE TABLE exercises (
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX exercises_name_key ON exercises (lower(name));
+CREATE UNIQUE INDEX exercises_name_shared_key ON exercises (lower(name)) WHERE user_id IS NULL;
+CREATE UNIQUE INDEX exercises_name_personal_key ON exercises (user_id, lower(name)) WHERE user_id IS NOT NULL;
 CREATE INDEX exercises_equipment_idx ON exercises USING gin (equipment);
 CREATE INDEX exercises_tags_idx ON exercises USING gin (tags);
 
@@ -47,19 +48,23 @@ CREATE TABLE template_exercises (
     target_sets SMALLINT NOT NULL,
     target_reps SMALLINT,
     target_seconds SMALLINT,
+    target_to_failure BOOLEAN,
+    rest_seconds SMALLINT,
     notes TEXT,
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (template_id, exercise_id),
 
-    CONSTRAINT target_has_number CHECK (target_reps IS NOT NULL OR target_seconds IS NOT NULL)
+    CONSTRAINT has_target CHECK (target_reps IS NOT NULL OR target_seconds IS NOT NULL OR target_to_failure IS TRUE)
 );
 
 
 CREATE TABLE bodyweight_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    bodyweight_kg NUMERIC(5,2) NOT NULL,
+    bodyweight NUMERIC(5,2) NOT NULL,
+    unit TEXT NOT NULL DEFAULT 'kg'
+        CHECK (unit in ('kg', 'lbs')),
     logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -72,6 +77,7 @@ CREATE TABLE workouts (
     template_id UUID REFERENCES templates(id) ON DELETE SET NULL,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
+    rpe SMALLINT CHECK (rpe BETWEEN 1 AND 10),
     notes TEXT,
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ
@@ -87,7 +93,9 @@ CREATE TABLE workout_sets (
     logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     reps SMALLINT,
     seconds SMALLINT,
-    weight_kg NUMERIC(5,2),
+    weight NUMERIC(5,2),
+    unit TEXT NOT NULL DEFAULT 'kg'
+        CHECK (unit in ('kg', 'lbs')),
     rpe SMALLINT CHECK (rpe BETWEEN 1 AND 10),
     type TEXT NOT NULL DEFAULT 'working'
         CHECK (type IN ('warm-up', 'working', 'drop')),
@@ -108,7 +116,7 @@ INSERT INTO exercises (name, metric, load, tags, equipment) VALUES
     ('Pike push-up',         'reps',    'bodyweight', '{push,shoulders}', '{floor,rings,parallettes}'),
     ('Dip',                  'reps',    'bodyweight', '{push,chest,triceps}', '{rings,parallel_bars}'),
     ('Handstand hold',       'seconds', 'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
-    ('Handstand Push-up',    'reps',    'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
+    ('Handstand push-up',    'reps',    'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
     ('Pull-up',              'reps',    'bodyweight', '{pull,back,biceps}', '{rings,pull_up_bar}'),
     ('Chin-up',              'reps',    'bodyweight', '{pull,back,biceps}', '{rings,pull_up_bar}'),
     ('Inverted row',         'reps',    'bodyweight', '{pull,back}', '{rings,parallel_bars,low_bar}'),
@@ -127,3 +135,9 @@ INSERT INTO exercises (name, metric, load, tags, equipment) VALUES
     ('Hanging leg raise',    'reps',    'bodyweight', '{core}', '{rings,pull_up_bar}'),
     ('Face pull',            'reps',    'bodyweight', '{pull,shoulders}', '{rings,resistance_band}'),
     ('Lateral raise',        'reps',    'absolute',   '{shoulders,isolation}', '{floor}');
+
+UPDATE exercises SET progresses_from_id = (SELECT id FROM exercises WHERE name = 'Pike push-up')
+    WHERE name = 'Handstand push-up';
+UPDATE exercises SET progresses_from_id = (SELECT id FROM exercises WHERE name = 'Dead hang')
+    WHERE name = 'One arm dead hang';
+
