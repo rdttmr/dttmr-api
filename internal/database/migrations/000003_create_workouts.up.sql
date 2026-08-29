@@ -73,7 +73,8 @@ CREATE TABLE workouts (
     ended_at TIMESTAMPTZ,
     rpe smallint CHECK (rpe BETWEEN 1 AND 10),
     notes TEXT,
-    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX workouts_time_idx ON workouts (started_at DESC);
@@ -91,6 +92,7 @@ CREATE TABLE workout_sets (
         CHECK (type IN ('warm-up', 'working', 'drop')),
     note TEXT,
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
 
     CONSTRAINT set_has_number CHECK (reps IS NOT NULL OR seconds IS NOT NULL)
 );
