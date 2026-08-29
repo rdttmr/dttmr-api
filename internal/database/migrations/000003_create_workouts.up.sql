@@ -94,7 +94,7 @@ CREATE TABLE workout_sets (
 );
 
 CREATE INDEX sets_workout_idx ON workout_sets (workout_id, logged_at);
-CREATE INDEX sets_exercise_ifx ON workout_sets (exercise_id, logged_at DESC);
+CREATE INDEX sets_exercise_idx ON workout_sets (exercise_id, logged_at DESC);
 
 INSERT INTO exercises (name, metric, load, tags, equipment) VALUES
     ('Push-up',              'reps',    'bodyweight', '{push,chest,triceps}', '{floor,rings,parallettes}'),
