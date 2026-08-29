@@ -1,6 +1,7 @@
 CREATE TABLE exercises (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     equipment TEXT[] NOT NULL DEFAULT '{}'
         CHECK (
             equipment <@ ARRAY [
@@ -18,6 +19,7 @@ CREATE TABLE exercises (
         CHECK (load IN ('bodyweight', 'absolute')),
     tags TEXT[] NOT NULL DEFAULT '{}', -- push/pull/legs/core/skill/shoulders/...
     notes TEXT,
+    progresses_from_id UUID REFERENCES exercises(id) ON DELETE SET NULL,
     hidden BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -32,28 +34,47 @@ CREATE TABLE templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     notes TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE template_exercises (
     template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
     exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     position SMALLINT NOT NULL,
-    target TEXT,
+    group_no SMALLINT,
+    target_sets SMALLINT NOT NULL,
+    target_reps SMALLINT,
+    target_seconds SMALLINT,
+    notes TEXT,
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    PRIMARY KEY (template_id, exercise_id)
+    PRIMARY KEY (template_id, exercise_id),
+
+    CONSTRAINT target_has_number CHECK (target_reps IS NOT NULL OR target_seconds IS NOT NULL)
+);
+
+
+CREATE TABLE bodyweight_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    bodyweight_kg NUMERIC(5,2) NOT NULL,
+    logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
 CREATE TABLE workouts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     template_id UUID REFERENCES templates(id) ON DELETE SET NULL,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
-    rpe smallint CHECK (rpe BETWEEN 1 AND 10),
-    bodyweight_kg NUMERIC(5,2),
-    notes TEXT
+    notes TEXT,
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX workouts_time_idx ON workouts (started_at DESC);
@@ -67,13 +88,18 @@ CREATE TABLE workout_sets (
     reps SMALLINT,
     seconds SMALLINT,
     weight_kg NUMERIC(5,2),
+    rpe SMALLINT CHECK (rpe BETWEEN 1 AND 10),
+    type TEXT NOT NULL DEFAULT 'working'
+        CHECK (type IN ('warm-up', 'working', 'drop')),
     note TEXT,
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
 
     CONSTRAINT set_has_number CHECK (reps IS NOT NULL OR seconds IS NOT NULL)
 );
 
 CREATE INDEX sets_workout_idx ON workout_sets (workout_id, logged_at);
-CREATE INDEX sets_exercise_ifx ON workout_sets (exercise_id, logged_at DESC);
+CREATE INDEX sets_exercise_idx ON workout_sets (exercise_id, logged_at DESC);
 
 INSERT INTO exercises (name, metric, load, tags, equipment) VALUES
     ('Push-up',              'reps',    'bodyweight', '{push,chest,triceps}', '{floor,rings,parallettes}'),
@@ -82,12 +108,14 @@ INSERT INTO exercises (name, metric, load, tags, equipment) VALUES
     ('Pike push-up',         'reps',    'bodyweight', '{push,shoulders}', '{floor,rings,parallettes}'),
     ('Dip',                  'reps',    'bodyweight', '{push,chest,triceps}', '{rings,parallel_bars}'),
     ('Handstand hold',       'seconds', 'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
-    ('Handstand Push-up',       'reps', 'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
+    ('Handstand Push-up',    'reps',    'bodyweight', '{push,shoulders,skill}', '{floor,rings,parallettes}'),
     ('Pull-up',              'reps',    'bodyweight', '{pull,back,biceps}', '{rings,pull_up_bar}'),
     ('Chin-up',              'reps',    'bodyweight', '{pull,back,biceps}', '{rings,pull_up_bar}'),
     ('Inverted row',         'reps',    'bodyweight', '{pull,back}', '{rings,parallel_bars,low_bar}'),
+    ('Inverted deadlift',    'reps',    'bodyweight', '{pull,back}', '{rings,parallel_bars,low_bar,pull_up_bar}'),
     ('Muscle-up',            'reps',    'bodyweight', '{pull,push,skill}', '{rings,pull_up_bar}'),
     ('Dead hang',            'seconds', 'bodyweight', '{pull,grip}', '{rings,pull_up_bar}'),
+    ('One arm dead hang',    'seconds', 'bodyweight', '{pull,grip}', '{rings,pull_up_bar}'),
     ('Front lever hold',     'seconds', 'bodyweight', '{pull,core,skill}', '{rings,pull_up_bar,low_bar}'),
     ('Pistol squat',         'reps',    'bodyweight', '{legs}', '{floor}'),
     ('Bulgarian split squat','reps',    'bodyweight', '{legs}', '{floor}'),
