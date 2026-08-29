@@ -18,6 +18,7 @@ CREATE TABLE exercises (
         CHECK (load IN ('bodyweight', 'absolute')),
     tags TEXT[] NOT NULL DEFAULT '{}', -- push/pull/legs/core/skill/shoulders/...
     notes TEXT,
+    progresses_from_id UUID REFERENCES exercises(id) ON DELETE SET NULL,
     hidden BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -34,6 +35,7 @@ CREATE TABLE templates (
     notes TEXT,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE template_exercises (
@@ -56,6 +58,7 @@ CREATE TABLE workouts (
     rpe smallint CHECK (rpe BETWEEN 1 AND 10),
     bodyweight_kg NUMERIC(5,2),
     notes TEXT
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX workouts_time_idx ON workouts (started_at DESC);
@@ -70,6 +73,7 @@ CREATE TABLE workout_sets (
     seconds SMALLINT,
     weight_kg NUMERIC(5,2),
     note TEXT,
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
     CONSTRAINT set_has_number CHECK (reps IS NOT NULL OR seconds IS NOT NULL)
 );
