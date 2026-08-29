@@ -62,7 +62,7 @@ func NewAuthService(r AuthRepository, jwtSecret []byte) *AuthService {
 	return &AuthService{repo: r, jwtSecret: jwtSecret}
 }
 
-func (s *AuthService) authenticate(ctx context.Context, email string, password string) (*AuthUser, error) {
+func (s *AuthService) Authenticate(ctx context.Context, email string, password string) (*AuthUser, error) {
 	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return user, err
@@ -80,7 +80,7 @@ func (s *AuthService) authenticate(ctx context.Context, email string, password s
 }
 
 func (s *AuthService) Login(ctx context.Context, email string, password string) (TokenPair, error) {
-	user, err := s.authenticate(ctx, email, password)
+	user, err := s.Authenticate(ctx, email, password)
 	if err != nil {
 		return TokenPair{}, err
 	}
