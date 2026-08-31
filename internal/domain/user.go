@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ErrUserIDMissing   = errors.New("user id is missing")
+	ErrUserIDMissing   = errors.New("user id is required")
 	ErrEmailMissing    = errors.New("email is required")
 	ErrNameMissing     = errors.New("name is required")
 	ErrPasswordMissing = errors.New("password is required")
