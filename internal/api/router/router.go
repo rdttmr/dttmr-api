@@ -51,7 +51,7 @@ func NewMux(cfg Config) http.Handler {
 	// Invites
 	apiMux.Handle("POST /user/invites", protected(inviteHandler.CreateInvite))
 	apiMux.Handle("DELETE /user/invites/{id}", protected(inviteHandler.DeleteInvite))
-	apiMux.Handle("GET /user/invites", protected(inviteHandler.CreateInvite))
+	apiMux.Handle("GET /user/invites", protected(inviteHandler.GetInvites))
 
 	// Lists
 	apiMux.Handle("POST /lists", protected(listHandler.CreateList))
