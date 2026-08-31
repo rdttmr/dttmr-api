@@ -83,7 +83,7 @@ func (r *InviteRepo) GetInvite(ctx context.Context, code string) (*domain.Invite
 
 func (r *InviteRepo) GetInvites(ctx context.Context, userID string) ([]domain.Invite, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, code, expires_at, consumed_at FROM invites WHERE invitee_user_id=$1", userID,
+		"SELECT id, code, expires_at, consumed_at FROM invites WHERE invitee_user_id=$1",
 		userID,
 	)
 	if err != nil {
