@@ -38,7 +38,7 @@ func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, cod
 
 func (r *InviteRepo) DeleteInvite(ctx context.Context, userID string, inviteID string) error {
 	_, err := r.db.ExecContext(ctx,
-		"DELETE FROM invites WHERE id = $1 AND invitee_user_id = $2 AND consumed_at IS NULL",
+		"DELETE FROM invites WHERE id = $1 AND inviter_user_id = $2 AND consumed_at IS NULL",
 		inviteID, userID,
 	)
 	if err != nil {
@@ -83,7 +83,7 @@ func (r *InviteRepo) GetInvite(ctx context.Context, code string) (*domain.Invite
 
 func (r *InviteRepo) GetInvites(ctx context.Context, userID string) ([]domain.Invite, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, code, expires_at, consumed_at FROM invites WHERE invitee_user_id=$1",
+		"SELECT id, code, expires_at, consumed_at FROM invites WHERE inviter_user_id=$1",
 		userID,
 	)
 	if err != nil {
