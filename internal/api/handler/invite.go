@@ -25,7 +25,7 @@ func NewInviteHandler(inviteService *domain.InviteService) *InviteHandler {
 // @Produce json
 // @Success 201 {object} domain.Invite
 // @Error 500 {object} response.ErrorResponse "failed to create invite"
-// @Router /users/invite [post]
+// @Router /user/invites [post]
 func (h *InviteHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -58,7 +58,7 @@ func (h *InviteHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
 // @Success 204
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 500 {object} response.ErrorResponse "failed to delete invite"
-// @Router /users/invite/{id} [delete]
+// @Router /user/invites/{id} [delete]
 func (h *InviteHandler) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -96,7 +96,7 @@ func (h *InviteHandler) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Success 200 {object} []domain.Invite
 // @Error 500 {object} response.ErrorResponse "failed to get invites"
-// @Router /users/invite [get]
+// @Router /user/invites [get]
 func (h *InviteHandler) GetInvites(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
