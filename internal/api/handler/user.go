@@ -61,11 +61,23 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	err = h.InviteService.ConsumeInvite(ctx, invite.ID, user.ID)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to consume invite", slog.Any("error", err))
-		// TODO: As long as this is not executed within a transaction, the user will still be created,
-		//		 so we can actually return the success JSON
+
+		// TODO: This should be a transaction rollback, once we have db transactions in the handler
+		err = h.UserService.DeleteUser(ctx, user.ID)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to delete user again",
+				slog.Any("error", err),
+				slog.String("user_id", user.ID),
+			)
+		}
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to consume invite")
+		return
 	}
 
-	slog.InfoContext(ctx, "created user successfully", slog.Any("user_id", user.ID))
+	slog.InfoContext(ctx, "created user successfully",
+		slog.String("user_id", user.ID),
+		slog.String("invite_id", invite.ID),
+	)
 	response.JSON(ctx, w, http.StatusCreated, user)
 }
 

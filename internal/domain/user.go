@@ -24,6 +24,7 @@ type User struct {
 
 type UserRepository interface {
 	CreateUser(ctx context.Context, email string, name string, passwordHash string) (*User, error)
+	DeleteUser(ctx context.Context, userID string) error
 	ChangePassword(ctx context.Context, userID string, passwordHash string) error
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 }
@@ -53,6 +54,14 @@ func (s *UserService) CreateUser(ctx context.Context, email string, name string,
 	}
 
 	return s.repo.CreateUser(ctx, email, name, string(hash))
+}
+
+func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
+	if len(userID) == 0 {
+		return ErrUserIDMissing
+	}
+
+	return s.repo.DeleteUser(ctx, userID)
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, userID string, password string) error {
