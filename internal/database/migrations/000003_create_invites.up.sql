@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS invites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     inviter_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     invitee_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    code VARCHAR(128) NOT NULL,
+    code VARCHAR(64) NOT NULL,
     consumed_at TIMESTAMPTZ,
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
