@@ -45,7 +45,9 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.HandleFunc("POST /logout/all", authHandler.LogoutAllDevices)
 
 	// Users
-	apiMux.Handle("POST /users", protected(userHandler.CreateUser))
+	apiMux.HandleFunc("POST /users", userHandler.CreateUser)
+
+	// User
 	apiMux.Handle("POST /user/password", protected(userHandler.ChangePassword))
 
 	// Invites
