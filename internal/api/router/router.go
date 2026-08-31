@@ -35,7 +35,6 @@ func NewMux(cfg Config) http.Handler {
 	protected := middleware.WithJWT(authService)
 
 	apiMux := http.NewServeMux()
-	apiMux.HandleFunc("/", handler.DefaultHandler)
 	apiMux.HandleFunc("GET /health", handler.HealthHandler)
 
 	// Auth
