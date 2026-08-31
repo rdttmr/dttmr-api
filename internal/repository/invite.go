@@ -50,7 +50,7 @@ func (r *InviteRepo) DeleteInvite(ctx context.Context, userID string, inviteID s
 
 func (r *InviteRepo) ConsumeInvite(ctx context.Context, inviteID string, inviteeUserID string) error {
 	res, err := r.db.ExecContext(ctx,
-		"UPDATE invites SET invitee_user_id=$1, consumed_at=NOW() WHERE id=$2 AND expires_at < NOW() AND consumed_at IS NULL",
+		"UPDATE invites SET invitee_user_id=$1, consumed_at=NOW() WHERE id=$2 AND expires_at > NOW() AND consumed_at IS NULL",
 		inviteeUserID, inviteID,
 	)
 	if err != nil {
