@@ -93,7 +93,6 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 	}
 
 	return lists, nil
-
 }
 
 func (r *ListRepo) AddUserToList(ctx context.Context, listID string, userID string) error {

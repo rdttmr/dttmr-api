@@ -20,9 +20,13 @@ func NewMux(cfg Config) http.Handler {
 	authService := domain.NewAuthService(authRepo, []byte(cfg.JWTSecret))
 	authHandler := handler.NewAuthHandler(authService)
 
+	inviteRepo := repository.NewInviteRepo(cfg.Database)
+	inviteService := domain.NewInviteService(inviteRepo)
+	inviteHandler := handler.NewInviteHandler(inviteService)
+
 	userRepo := repository.NewUserRepo(cfg.Database)
 	userService := domain.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService, authService)
+	userHandler := handler.NewUserHandler(userService, authService, inviteService)
 
 	listRepo := repository.NewListRepo(cfg.Database)
 	listService := domain.NewListService(listRepo)
@@ -31,17 +35,26 @@ func NewMux(cfg Config) http.Handler {
 	protected := middleware.WithJWT(authService)
 
 	apiMux := http.NewServeMux()
-	apiMux.HandleFunc("/", handler.DefaultHandler)
 	apiMux.HandleFunc("GET /health", handler.HealthHandler)
 
+	// Auth
 	apiMux.HandleFunc("POST /login", authHandler.Login)
 	apiMux.HandleFunc("POST /login/refresh", authHandler.Refresh)
 	apiMux.HandleFunc("POST /logout", authHandler.Logout)
 	apiMux.HandleFunc("POST /logout/all", authHandler.LogoutAllDevices)
 
-	apiMux.Handle("POST /users", protected(userHandler.CreateUser))
-	apiMux.Handle("POST /users/password", protected(userHandler.ChangePassword))
+	// Users
+	apiMux.HandleFunc("POST /users", userHandler.CreateUser)
 
+	// User
+	apiMux.Handle("POST /user/password", protected(userHandler.ChangePassword))
+
+	// Invites
+	apiMux.Handle("POST /user/invites", protected(inviteHandler.CreateInvite))
+	apiMux.Handle("DELETE /user/invites/{id}", protected(inviteHandler.DeleteInvite))
+	apiMux.Handle("GET /user/invites", protected(inviteHandler.GetInvites))
+
+	// Lists
 	apiMux.Handle("POST /lists", protected(listHandler.CreateList))
 	apiMux.Handle("DELETE /lists/{id}", protected(listHandler.DeleteList))
 	apiMux.Handle("GET /lists", protected(listHandler.GetLists))

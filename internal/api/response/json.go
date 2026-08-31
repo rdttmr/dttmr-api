@@ -2,15 +2,10 @@ package response
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"log/slog"
 	"net/http"
 )
-
-// TODO: Move to own file
-func Status(ctx context.Context, w http.ResponseWriter, status int) {
-	w.WriteHeader(status)
-}
 
 func JSON(ctx context.Context, w http.ResponseWriter, status int, data any) {
 	payload, err := json.Marshal(data)

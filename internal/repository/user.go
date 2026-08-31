@@ -40,6 +40,18 @@ func (r *UserRepo) CreateUser(ctx context.Context, email string, name string, pa
 	return user, nil
 }
 
+func (r *UserRepo) DeleteUser(ctx context.Context, userID string) error {
+	_, err := r.db.ExecContext(ctx,
+		"DELETE FROM users WHERE id = $1",
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	return nil
+}
+
 func (r *UserRepo) ChangePassword(ctx context.Context, userID string, passwordHash string) error {
 	_, err := r.db.ExecContext(ctx,
 		"UPDATE users SET password_hash = $1 WHERE id = $2",

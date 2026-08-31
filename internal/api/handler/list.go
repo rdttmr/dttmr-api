@@ -54,7 +54,7 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "created list successfully", slog.Any("list_id", list.ID))
+	slog.InfoContext(ctx, "created list successfully", slog.String("list_id", list.ID))
 	response.JSON(ctx, w, http.StatusCreated, list)
 }
 
@@ -94,8 +94,8 @@ func (h *ListHandler) DeleteList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "deleted list successfully", slog.Any("list_id", listID))
-	response.Status(ctx, w, http.StatusNoContent)
+	slog.InfoContext(ctx, "deleted list successfully", slog.String("list_id", listID))
+	response.Status(w, http.StatusNoContent)
 }
 
 // GetLists handles fetching lists for the current user
@@ -174,8 +174,11 @@ func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "added user to list successfully", slog.Any("list_id", payload.ListID), slog.Any("email", user.Email))
-	response.Status(ctx, w, http.StatusNoContent)
+	slog.InfoContext(ctx, "added user to list successfully",
+		slog.String("list_id", payload.ListID),
+		slog.String("email", user.Email),
+	)
+	response.Status(w, http.StatusNoContent)
 }
 
 // RemoveUserFromList handles the removal of a user association to a list
@@ -222,8 +225,11 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	slog.InfoContext(ctx, "removed user from list successfully", slog.Any("list_id", payload.ListID), slog.Any("email", user.Email))
-	response.Status(ctx, w, http.StatusNoContent)
+	slog.InfoContext(ctx, "removed user from list successfully",
+		slog.String("list_id", payload.ListID),
+		slog.String("email", user.Email),
+	)
+	response.Status(w, http.StatusNoContent)
 }
 
 // CreateListItem handles creation of a new list item on a given list
@@ -262,7 +268,7 @@ func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "created list item successfully", slog.Any("list_item_id", item.ID))
+	slog.InfoContext(ctx, "created list item successfully", slog.String("list_item_id", item.ID))
 	response.JSON(ctx, w, http.StatusCreated, item)
 }
 
@@ -302,8 +308,8 @@ func (h *ListHandler) DeleteListItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "deleted list item successfully", slog.Any("list_item_id", listItemID))
-	response.Status(ctx, w, http.StatusNoContent)
+	slog.InfoContext(ctx, "deleted list item successfully", slog.String("list_item_id", listItemID))
+	response.Status(w, http.StatusNoContent)
 }
 
 // UpdateListItem handles updating of a list item
@@ -343,8 +349,8 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "updated list item successfully", slog.Any("list_item_id", payload.ListItemID))
-	response.Status(ctx, w, http.StatusNoContent)
+	slog.InfoContext(ctx, "updated list item successfully", slog.String("list_item_id", payload.ListItemID))
+	response.Status(w, http.StatusNoContent)
 }
 
 // SetListItemCompleted handles updating "is_completed" of a list item
@@ -393,8 +399,8 @@ func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	slog.InfoContext(ctx, "updated list item completed successful", slog.Any("list_item_id", listItemID))
-	response.Status(ctx, w, http.StatusNoContent)
+	slog.InfoContext(ctx, "updated list item completed successful", slog.String("list_item_id", listItemID))
+	response.Status(w, http.StatusNoContent)
 }
 
 // GetListItems handles return all list items of a list

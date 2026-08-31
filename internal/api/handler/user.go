@@ -10,12 +10,13 @@ import (
 )
 
 type UserHandler struct {
-	UserService *domain.UserService
-	AuthService *domain.AuthService
+	UserService   *domain.UserService
+	AuthService   *domain.AuthService
+	InviteService *domain.InviteService
 }
 
-func NewUserHandler(userService *domain.UserService, authService *domain.AuthService) *UserHandler {
-	return &UserHandler{UserService: userService, AuthService: authService}
+func NewUserHandler(userService *domain.UserService, authService *domain.AuthService, inviteService *domain.InviteService) *UserHandler {
+	return &UserHandler{UserService: userService, AuthService: authService, InviteService: inviteService}
 }
 
 // CreateUser handles the creation of a user
@@ -28,6 +29,7 @@ func NewUserHandler(userService *domain.UserService, authService *domain.AuthSer
 // @Param payload body request.CreateUserPayload true "Create user payload"
 // @Success 201 {object} domain.User
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 400 {object} response.ErrorResponse "invite is invalid"
 // @Error 500 {object} response.ErrorResponse "failed to create user"
 // @Router /users [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -40,6 +42,15 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	invite, err := h.InviteService.GetInvite(ctx, payload.InviteCode)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get invite", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "invite is invalid")
+		return
+	}
+
+	// TODO: Creating user and consuming the invite must be in a transaction.
+	//		 The repositories must support tx in context, and the handler must be able to start a transaction
 	user, err := h.UserService.CreateUser(ctx, payload.Email, payload.Name, payload.Password)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create user", slog.Any("error", err))
@@ -47,7 +58,26 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "created user successfully", slog.Any("user_id", user.ID))
+	err = h.InviteService.ConsumeInvite(ctx, invite.ID, user.ID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to consume invite", slog.Any("error", err))
+
+		// TODO: This should be a transaction rollback, once we have db transactions in the handler
+		err = h.UserService.DeleteUser(ctx, user.ID)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to delete user again",
+				slog.Any("error", err),
+				slog.String("user_id", user.ID),
+			)
+		}
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to consume invite")
+		return
+	}
+
+	slog.InfoContext(ctx, "created user successfully",
+		slog.String("user_id", user.ID),
+		slog.String("invite_id", invite.ID),
+	)
 	response.JSON(ctx, w, http.StatusCreated, user)
 }
 
@@ -64,7 +94,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 // @Error 401 {object} response.ErrorResponse "could not authenticate with current password"
 // @Error 500 {object} response.ErrorResponse "could not get auth context"
 // @Error 500 {object} response.ErrorResponse "failed to change password"
-// @Router /users/password [post]
+// @Router /user/password [post]
 func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -102,5 +132,5 @@ func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.InfoContext(ctx, "password changed successfully", slog.Any("user_id", authContext.UserID))
-	response.Status(ctx, w, http.StatusNoContent)
+	response.Status(w, http.StatusNoContent)
 }
