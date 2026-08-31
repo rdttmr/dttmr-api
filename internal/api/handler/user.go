@@ -102,5 +102,5 @@ func (h *UserHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.InfoContext(ctx, "password changed successfully", slog.Any("user_id", authContext.UserID))
-	response.Status(ctx, w, http.StatusNoContent)
+	response.Status(w, http.StatusNoContent)
 }
