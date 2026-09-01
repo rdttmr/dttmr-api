@@ -11,17 +11,13 @@ import (
 )
 
 type AuthRepo struct {
-	db *sql.DB
-}
-
-func NewAuthRepo(db *sql.DB) *AuthRepo {
-	return &AuthRepo{db: db}
+	Repo
 }
 
 func (r *AuthRepo) GetUserById(ctx context.Context, id string) (*domain.AuthUser, error) {
 	user := &domain.AuthUser{}
 
-	err := r.db.QueryRowContext(ctx,
+	err := r.conn(ctx).QueryRowContext(ctx,
 		"SELECT id, email, name, password_hash FROM users WHERE id = $1",
 		id,
 	).Scan(&user.ID, &user.Email, &user.Name, &user.PasswordHash)
@@ -35,7 +31,7 @@ func (r *AuthRepo) GetUserById(ctx context.Context, id string) (*domain.AuthUser
 func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*domain.AuthUser, error) {
 	user := &domain.AuthUser{}
 
-	err := r.db.QueryRowContext(ctx,
+	err := r.conn(ctx).QueryRowContext(ctx,
 		"SELECT id, email, name, password_hash FROM users WHERE email = $1",
 		email,
 	).Scan(&user.ID, &user.Email, &user.Name, &user.PasswordHash)
@@ -47,7 +43,7 @@ func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*domain.Au
 }
 
 func (r *AuthRepo) StoreRefreshToken(ctx context.Context, userID string, tokenHash string, expiresAt time.Time) error {
-	_, err := r.db.ExecContext(ctx,
+	_, err := r.conn(ctx).ExecContext(ctx,
 		"INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)",
 		userID, tokenHash, expiresAt,
 	)
@@ -60,7 +56,7 @@ func (r *AuthRepo) StoreRefreshToken(ctx context.Context, userID string, tokenHa
 
 func (r *AuthRepo) ConsumeRefreshToken(ctx context.Context, tokenHash string) (string, error) {
 	var userID string
-	err := r.db.QueryRowContext(ctx,
+	err := r.conn(ctx).QueryRowContext(ctx,
 		"DELETE FROM refresh_tokens WHERE token_hash = $1 AND expires_at > NOW() RETURNING user_id",
 		tokenHash,
 	).Scan(&userID)
@@ -75,7 +71,7 @@ func (r *AuthRepo) ConsumeRefreshToken(ctx context.Context, tokenHash string) (s
 }
 
 func (r *AuthRepo) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM refresh_tokens WHERE token_hash = $1", tokenHash)
+	_, err := r.conn(ctx).ExecContext(ctx, "DELETE FROM refresh_tokens WHERE token_hash = $1", tokenHash)
 	if err != nil {
 		return fmt.Errorf("failed to revoke refresh token: %w", err)
 	}
@@ -84,7 +80,7 @@ func (r *AuthRepo) RevokeRefreshToken(ctx context.Context, tokenHash string) err
 }
 
 func (r *AuthRepo) RevokeRefreshTokens(ctx context.Context, userID string) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM refresh_tokens WHERE user_id = $1", userID)
+	_, err := r.conn(ctx).ExecContext(ctx, "DELETE FROM refresh_tokens WHERE user_id = $1", userID)
 	if err != nil {
 		return fmt.Errorf("failed to revoke refresh tokens: %w", err)
 	}

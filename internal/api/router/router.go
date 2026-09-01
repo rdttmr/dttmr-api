@@ -16,20 +16,17 @@ type Config struct {
 }
 
 func NewMux(cfg Config) http.Handler {
-	authRepo := repository.NewAuthRepo(cfg.Database)
-	authService := domain.NewAuthService(authRepo, []byte(cfg.JWTSecret))
+	store := repository.NewStore(cfg.Database)
+
+	authService := domain.NewAuthService(store.Auth, []byte(cfg.JWTSecret))
+	inviteService := domain.NewInviteService(store.Invite)
+	userService := domain.NewUserService(store.User)
+	registrationService := domain.NewRegistrationService(store, userService, inviteService)
+	listService := domain.NewListService(store.List)
+
 	authHandler := handler.NewAuthHandler(authService)
-
-	inviteRepo := repository.NewInviteRepo(cfg.Database)
-	inviteService := domain.NewInviteService(inviteRepo)
 	inviteHandler := handler.NewInviteHandler(inviteService)
-
-	userRepo := repository.NewUserRepo(cfg.Database)
-	userService := domain.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService, authService, inviteService)
-
-	listRepo := repository.NewListRepo(cfg.Database)
-	listService := domain.NewListService(listRepo)
+	userHandler := handler.NewUserHandler(userService, authService, registrationService)
 	listHandler := handler.NewListHandler(listService, userService)
 
 	protected := middleware.WithJWT(authService)

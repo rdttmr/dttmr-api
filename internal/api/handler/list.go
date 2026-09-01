@@ -47,7 +47,7 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.Name, payload.UserIDs)
+	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.Name)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")

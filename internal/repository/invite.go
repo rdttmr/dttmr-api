@@ -11,16 +11,12 @@ import (
 )
 
 type InviteRepo struct {
-	db *sql.DB
-}
-
-func NewInviteRepo(db *sql.DB) *InviteRepo {
-	return &InviteRepo{db: db}
+	Repo
 }
 
 func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, code string, expiresAt time.Time) (*domain.Invite, error) {
 	var id string
-	err := r.db.QueryRowContext(ctx,
+	err := r.conn(ctx).QueryRowContext(ctx,
 		"INSERT INTO invites (inviter_user_id, code, expires_at) VALUES ($1, $2, $3) RETURNING id",
 		inviterUserID, code, expiresAt,
 	).Scan(&id)
@@ -37,7 +33,7 @@ func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, cod
 }
 
 func (r *InviteRepo) DeleteInvite(ctx context.Context, userID string, inviteID string) error {
-	_, err := r.db.ExecContext(ctx,
+	_, err := r.conn(ctx).ExecContext(ctx,
 		"DELETE FROM invites WHERE id = $1 AND inviter_user_id = $2 AND consumed_at IS NULL",
 		inviteID, userID,
 	)
@@ -49,7 +45,7 @@ func (r *InviteRepo) DeleteInvite(ctx context.Context, userID string, inviteID s
 }
 
 func (r *InviteRepo) ConsumeInvite(ctx context.Context, inviteID string, inviteeUserID string) error {
-	res, err := r.db.ExecContext(ctx,
+	res, err := r.conn(ctx).ExecContext(ctx,
 		"UPDATE invites SET invitee_user_id=$1, consumed_at=NOW() WHERE id=$2 AND expires_at > NOW() AND consumed_at IS NULL",
 		inviteeUserID, inviteID,
 	)
@@ -70,7 +66,7 @@ func (r *InviteRepo) ConsumeInvite(ctx context.Context, inviteID string, invitee
 func (r *InviteRepo) GetInvite(ctx context.Context, code string) (*domain.Invite, error) {
 	var invite domain.Invite
 
-	err := r.db.QueryRowContext(ctx,
+	err := r.conn(ctx).QueryRowContext(ctx,
 		"SELECT id, code, expires_at, consumed_at FROM invites WHERE code=$1",
 		code,
 	).Scan(&invite.ID, &invite.Code, &invite.ExpiresAt, &invite.ConsumedAt)
@@ -82,7 +78,7 @@ func (r *InviteRepo) GetInvite(ctx context.Context, code string) (*domain.Invite
 }
 
 func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, count int) ([]domain.Invite, error) {
-	rows, err := r.db.QueryContext(ctx,
+	rows, err := r.conn(ctx).QueryContext(ctx,
 		"SELECT id, code, expires_at, consumed_at FROM invites WHERE inviter_user_id=$1 ORDER BY created_at DESC OFFSET $2 LIMIT $3",
 		userID, offset, count,
 	)
@@ -110,7 +106,7 @@ func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, 
 
 func (r *InviteRepo) CountInvites(ctx context.Context, userID string) (int, error) {
 	var count int
-	err := r.db.QueryRowContext(ctx,
+	err := r.conn(ctx).QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1",
 		userID,
 	).Scan(&count)
