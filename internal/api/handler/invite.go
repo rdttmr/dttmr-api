@@ -175,3 +175,34 @@ func (h *InviteHandler) GetInvites(w http.ResponseWriter, r *http.Request) {
 		Data:  invites,
 	})
 }
+
+// GetInvitesStatus handles fetching the counts of a users invitations
+//
+// @Summary Get invitations status
+// @Description Gets active/expired/used counts for all the users invites
+// @Tags Invite
+// @Accept json
+// @Produce json
+// @Success 200 {object} domain.InviteCounts
+// @Error 500 {object} response.ErrorResponse "failed to count invites"
+// @Router /user/invites [get]
+
+func (h *InviteHandler) GetInvitesStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to count invites")
+		return
+	}
+
+	counts, err := h.InviteService.CountInvitesStructured(ctx, authContext.UserID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to count invites", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to count invites")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, counts)
+}

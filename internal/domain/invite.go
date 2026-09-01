@@ -21,6 +21,12 @@ type Invite struct {
 	ConsumedAt *time.Time `json:"consumed_at"`
 }
 
+type InviteCounts struct {
+	Active  int `json:"active"`
+	Expired int `json:"expired"`
+	Used    int `json:"used"`
+}
+
 type InviteRepository interface {
 	CreateInvite(ctx context.Context, inviterUserID string, code string, expiresAt time.Time) (*Invite, error)
 	DeleteInvite(ctx context.Context, userID string, inviteID string) error
@@ -28,6 +34,7 @@ type InviteRepository interface {
 	GetInvite(ctx context.Context, code string) (*Invite, error)
 	GetInvites(ctx context.Context, userID string, offset int, count int) ([]Invite, error)
 	CountInvites(ctx context.Context, userID string) (int, error)
+	CountInvitesStructured(ctx context.Context, userID string) (*InviteCounts, error)
 }
 
 type InviteService struct {
@@ -106,4 +113,12 @@ func (s *InviteService) CountInvites(ctx context.Context, userID string) (int, e
 	}
 
 	return s.repo.CountInvites(ctx, userID)
+}
+
+func (s *InviteService) CountInvitesStructured(ctx context.Context, userID string) (*InviteCounts, error) {
+	if userID == "" {
+		return nil, ErrUserIDMissing
+	}
+
+	return s.repo.CountInvitesStructured(ctx, userID)
 }
