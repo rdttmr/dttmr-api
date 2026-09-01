@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -10,13 +11,13 @@ import (
 )
 
 type UserHandler struct {
-	UserService   *domain.UserService
-	AuthService   *domain.AuthService
-	InviteService *domain.InviteService
+	UserService         *domain.UserService
+	AuthService         *domain.AuthService
+	RegistrationService *domain.RegistrationService
 }
 
-func NewUserHandler(userService *domain.UserService, authService *domain.AuthService, inviteService *domain.InviteService) *UserHandler {
-	return &UserHandler{UserService: userService, AuthService: authService, InviteService: inviteService}
+func NewUserHandler(userService *domain.UserService, authService *domain.AuthService, registrationService *domain.RegistrationService) *UserHandler {
+	return &UserHandler{UserService: userService, AuthService: authService, RegistrationService: registrationService}
 }
 
 // CreateUser handles the creation of a user
@@ -29,6 +30,8 @@ func NewUserHandler(userService *domain.UserService, authService *domain.AuthSer
 // @Param payload body request.CreateUserPayload true "Create user payload"
 // @Success 201 {object} domain.User
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 400 {object} response.ErrorResponse "invite is expired"
+// @Error 409 {object} response.ErrorResponse "invite is already consumed"
 // @Error 400 {object} response.ErrorResponse "invite is invalid"
 // @Error 500 {object} response.ErrorResponse "failed to create user"
 // @Router /users [post]
@@ -42,41 +45,26 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	invite, err := h.InviteService.GetInvite(ctx, payload.InviteCode)
+	user, err := h.RegistrationService.Register(ctx, payload.InviteCode, payload.Email, payload.Name, payload.Password)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to get invite", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusBadRequest, "invite is invalid")
-		return
-	}
+		slog.ErrorContext(ctx, "failed to register user",
+			slog.Any("error", err),
+			slog.Any("payload", payload))
 
-	// TODO: Creating user and consuming the invite must be in a transaction.
-	//		 The repositories must support tx in context, and the handler must be able to start a transaction
-	user, err := h.UserService.CreateUser(ctx, payload.Email, payload.Name, payload.Password)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to create user", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to create user")
-		return
-	}
-
-	err = h.InviteService.ConsumeInvite(ctx, invite.ID, user.ID)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to consume invite", slog.Any("error", err))
-
-		// TODO: This should be a transaction rollback, once we have db transactions in the handler
-		err = h.UserService.DeleteUser(ctx, user.ID)
-		if err != nil {
-			slog.ErrorContext(ctx, "failed to delete user again",
-				slog.Any("error", err),
-				slog.String("user_id", user.ID),
-			)
+		if errors.Is(err, domain.ErrInviteExpired) {
+			response.Error(ctx, w, http.StatusBadRequest, "invite is expired")
+		} else if errors.Is(err, domain.ErrInviteConsumed) {
+			response.Error(ctx, w, http.StatusConflict, "invite is already consumed")
+		} else if errors.Is(err, domain.ErrInviteInvalid) {
+			response.Error(ctx, w, http.StatusBadRequest, "invite is invalid")
+		} else {
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to register")
 		}
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to consume invite")
 		return
 	}
 
 	slog.InfoContext(ctx, "created user successfully",
 		slog.String("user_id", user.ID),
-		slog.String("invite_id", invite.ID),
 	)
 	response.JSON(ctx, w, http.StatusCreated, user)
 }

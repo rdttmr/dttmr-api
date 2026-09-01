@@ -70,8 +70,8 @@ func main() {
 }
 
 func seedAdminUser(db *sql.DB, email string, name string, password string) error {
-	userRepo := repository.NewUserRepo(db)
-	userService := domain.NewUserService(userRepo)
+	store := repository.NewStore(db)
+	userService := domain.NewUserService(store.User)
 
 	_, err := userService.CreateUser(context.Background(), email, name, password)
 	return err

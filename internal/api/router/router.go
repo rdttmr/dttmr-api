@@ -16,20 +16,17 @@ type Config struct {
 }
 
 func NewMux(cfg Config) http.Handler {
-	authRepo := repository.NewAuthRepo(cfg.Database)
-	authService := domain.NewAuthService(authRepo, []byte(cfg.JWTSecret))
+	store := repository.NewStore(cfg.Database)
+
+	authService := domain.NewAuthService(store.Auth, []byte(cfg.JWTSecret))
+	inviteService := domain.NewInviteService(store.Invite)
+	userService := domain.NewUserService(store.User)
+	registrationService := domain.NewRegistrationService(store, userService, inviteService)
+	listService := domain.NewListService(store.List)
+
 	authHandler := handler.NewAuthHandler(authService)
-
-	inviteRepo := repository.NewInviteRepo(cfg.Database)
-	inviteService := domain.NewInviteService(inviteRepo)
 	inviteHandler := handler.NewInviteHandler(inviteService)
-
-	userRepo := repository.NewUserRepo(cfg.Database)
-	userService := domain.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService, authService, inviteService)
-
-	listRepo := repository.NewListRepo(cfg.Database)
-	listService := domain.NewListService(listRepo)
+	userHandler := handler.NewUserHandler(userService, authService, registrationService)
 	listHandler := handler.NewListHandler(listService, userService)
 
 	protected := middleware.WithJWT(authService)
@@ -41,7 +38,7 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.HandleFunc("POST /login", authHandler.Login)
 	apiMux.HandleFunc("POST /login/refresh", authHandler.Refresh)
 	apiMux.HandleFunc("POST /logout", authHandler.Logout)
-	apiMux.HandleFunc("POST /logout/all", authHandler.LogoutAllDevices)
+	apiMux.HandleFunc("POST /logout/all", protected(authHandler.LogoutAllDevices))
 
 	// Users
 	apiMux.HandleFunc("POST /users", userHandler.CreateUser)
@@ -60,9 +57,9 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("GET /lists", protected(listHandler.GetLists))
 	apiMux.Handle("POST /lists/user", protected(listHandler.AddUserToList))
 	apiMux.Handle("DELETE /lists/user", protected(listHandler.RemoveUserFromList))
-	apiMux.Handle("POST /lists/item", protected(listHandler.CreateListItem))
-	apiMux.Handle("DELETE /lists/item/{id}", protected(listHandler.DeleteListItem))
-	apiMux.Handle("PUT /lists/item", protected(listHandler.UpdateListItem))
+	apiMux.Handle("POST /lists/items", protected(listHandler.CreateListItem))
+	apiMux.Handle("DELETE /lists/items/{id}", protected(listHandler.DeleteListItem))
+	apiMux.Handle("PUT /lists/items", protected(listHandler.UpdateListItem))
 	apiMux.Handle("POST /lists/items/{id}", protected(listHandler.SetListItemCompleted))
 	apiMux.Handle("GET /lists/{id}", protected(listHandler.GetListItems))
 

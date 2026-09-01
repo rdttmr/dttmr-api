@@ -47,7 +47,7 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.Name, payload.UserIDs)
+	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.Name)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
@@ -243,7 +243,7 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to create list item"
-// @Router /lists/item [post]
+// @Router /lists/items [post]
 func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -283,7 +283,7 @@ func (h *ListHandler) CreateListItem(w http.ResponseWriter, r *http.Request) {
 // @Success 204
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 500 {object} response.ErrorResponse "failed to delete list item"
-// @Router /lists/item/{id} [delete]
+// @Router /lists/items/{id} [delete]
 func (h *ListHandler) DeleteListItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -324,7 +324,7 @@ func (h *ListHandler) DeleteListItem(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to update list item"
-// @Router /lists/item [put]
+// @Router /lists/items [put]
 func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

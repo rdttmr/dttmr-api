@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -27,6 +28,8 @@ func NewAuthHandler(authService *domain.AuthService) *AuthHandler {
 // @Param payload body request.LoginPayload true "Login payload"
 // @Success 200 {object} domain.TokenPair
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "email not found"
+// @Error 401 {object} response.ErrorResponse "password is wrong"
 // @Error 500 {object} response.ErrorResponse "failed to login"
 // @Router /login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -41,8 +44,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.AuthService.Login(ctx, payload.Email, payload.Password)
 	if err != nil {
+		if errors.Is(err, domain.ErrEmailNotFound) {
+			response.Error(ctx, w, http.StatusUnauthorized, "email not found")
+		} else if errors.Is(err, domain.ErrPasswordWrong) {
+			response.Error(ctx, w, http.StatusUnauthorized, "password is wrong")
+		} else {
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to login")
+		}
+
 		slog.ErrorContext(ctx, "failed to login", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to login")
 		return
 	}
 
@@ -89,6 +99,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 // @Tags Authorization
 // @Accept json
 // @Produce json
+// @Param payload body request.LogoutPayload true "Logout payload"
 // @Success 200 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to logout"
