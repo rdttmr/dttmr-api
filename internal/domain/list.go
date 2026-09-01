@@ -49,11 +49,12 @@ type ListRepository interface {
 }
 
 type ListService struct {
+	tx   Transactor
 	repo ListRepository
 }
 
-func NewListService(r ListRepository) *ListService {
-	return &ListService{repo: r}
+func NewListService(tx Transactor, r ListRepository) *ListService {
+	return &ListService{tx: tx, repo: r}
 }
 
 func (s *ListService) CreateList(ctx context.Context, authUserID string, name string) (*List, error) {
@@ -61,12 +62,21 @@ func (s *ListService) CreateList(ctx context.Context, authUserID string, name st
 		return nil, ErrListNameMissing
 	}
 
-	list, err := s.repo.CreateList(ctx, name)
-	if err != nil {
-		return nil, err
-	}
+	var list *List
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		l, err := s.repo.CreateList(ctx, name)
+		if err != nil {
+			return err
+		}
 
-	err = s.repo.AddUserToList(ctx, list.ID, authUserID)
+		err = s.repo.AddUserToList(ctx, l.ID, authUserID)
+		if err != nil {
+			return err
+		}
+
+		list = l
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}

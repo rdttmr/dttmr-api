@@ -11,8 +11,11 @@ import (
 )
 
 type Config struct {
-	Database  *sql.DB
-	JWTSecret string
+	Database         *sql.DB
+	JWTSecret        string
+	ServiceVersion   string
+	ServiceCommit    string
+	ServiceBuildTime string
 }
 
 func NewMux(cfg Config) http.Handler {
@@ -22,7 +25,7 @@ func NewMux(cfg Config) http.Handler {
 	inviteService := domain.NewInviteService(store.Invite)
 	userService := domain.NewUserService(store.User)
 	registrationService := domain.NewRegistrationService(store, userService, inviteService)
-	listService := domain.NewListService(store.List)
+	listService := domain.NewListService(store, store.List)
 
 	authHandler := handler.NewAuthHandler(authService)
 	inviteHandler := handler.NewInviteHandler(inviteService)
@@ -32,6 +35,8 @@ func NewMux(cfg Config) http.Handler {
 	protected := middleware.WithJWT(authService)
 
 	apiMux := http.NewServeMux()
+	apiMux.HandleFunc("GET /version", handler.VersionHandler(
+		cfg.ServiceVersion, cfg.ServiceCommit, cfg.ServiceBuildTime))
 	apiMux.HandleFunc("GET /health", handler.HealthHandler)
 
 	// Auth

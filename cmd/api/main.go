@@ -136,8 +136,11 @@ func setupLogging() {
 
 func makeServer(db *sql.DB, cfg *config.Config) *http.Server {
 	routerConfig := router.Config{
-		Database:  db,
-		JWTSecret: cfg.JWTSecret,
+		Database:         db,
+		JWTSecret:        cfg.JWTSecret,
+		ServiceVersion:   Version,
+		ServiceCommit:    Commit,
+		ServiceBuildTime: BuildTime,
 	}
 	mux := router.NewMux(routerConfig)
 
