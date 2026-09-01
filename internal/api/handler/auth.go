@@ -89,6 +89,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 // @Tags Authorization
 // @Accept json
 // @Produce json
+// @Param payload body request.LogoutPayload true "Logout payload"
 // @Success 200 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 500 {object} response.ErrorResponse "failed to logout"

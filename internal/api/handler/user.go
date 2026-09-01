@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -29,6 +30,8 @@ func NewUserHandler(userService *domain.UserService, authService *domain.AuthSer
 // @Param payload body request.CreateUserPayload true "Create user payload"
 // @Success 201 {object} domain.User
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 400 {object} response.ErrorResponse "invite is expired"
+// @Error 409 {object} response.ErrorResponse "invite is already consumed"
 // @Error 400 {object} response.ErrorResponse "invite is invalid"
 // @Error 500 {object} response.ErrorResponse "failed to create user"
 // @Router /users [post]
@@ -47,7 +50,16 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(ctx, "failed to register user",
 			slog.Any("error", err),
 			slog.Any("payload", payload))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to register")
+
+		if errors.Is(err, domain.ErrInviteExpired) {
+			response.Error(ctx, w, http.StatusBadRequest, "invite is expired")
+		} else if errors.Is(err, domain.ErrInviteConsumed) {
+			response.Error(ctx, w, http.StatusConflict, "invite is already consumed")
+		} else if errors.Is(err, domain.ErrInviteInvalid) {
+			response.Error(ctx, w, http.StatusBadRequest, "invite is invalid")
+		} else {
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to register")
+		}
 		return
 	}
 

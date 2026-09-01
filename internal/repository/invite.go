@@ -33,12 +33,21 @@ func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, cod
 }
 
 func (r *InviteRepo) DeleteInvite(ctx context.Context, userID string, inviteID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
+	res, err := r.conn(ctx).ExecContext(ctx,
 		"DELETE FROM invites WHERE id = $1 AND inviter_user_id = $2 AND consumed_at IS NULL",
 		inviteID, userID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to delete invite: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected: %w", err)
+	}
+	if affected < 1 {
+		// It's more of an assumption,
+		// but unless I encounter this being wrong, I'll keep it.
+		return domain.ErrInviteConsumed
 	}
 
 	return nil
@@ -57,7 +66,7 @@ func (r *InviteRepo) ConsumeInvite(ctx context.Context, inviteID string, invitee
 		return fmt.Errorf("could not get rows affected: %w", err)
 	}
 	if affected < 1 {
-		return fmt.Errorf("invite not found or expired")
+		return domain.ErrInviteInvalid
 	}
 
 	return nil

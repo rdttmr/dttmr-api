@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"log/slog"
+	"time"
 )
 
 type RegistrationService struct {
@@ -20,6 +21,13 @@ func (s *RegistrationService) Register(ctx context.Context, inviteCode string, e
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to get invite", slog.Any("error", err))
 		return nil, err
+	}
+
+	if invite.ConsumedAt != nil {
+		return nil, ErrInviteConsumed
+	}
+	if invite.ExpiresAt.Before(time.Now()) {
+		return nil, ErrInviteExpired
 	}
 
 	var user *User

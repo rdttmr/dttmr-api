@@ -9,6 +9,7 @@ import (
 var (
 	ErrInviteIDMissing = errors.New("invite id is required")
 	ErrCodeMissing     = errors.New("invite code is required")
+	ErrInviteInvalid   = errors.New("invite is invalid")
 	ErrInviteExpired   = errors.New("invite is expired")
 	ErrInviteConsumed  = errors.New("invite is already consumed")
 )

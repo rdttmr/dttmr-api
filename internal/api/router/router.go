@@ -38,7 +38,7 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.HandleFunc("POST /login", authHandler.Login)
 	apiMux.HandleFunc("POST /login/refresh", authHandler.Refresh)
 	apiMux.HandleFunc("POST /logout", authHandler.Logout)
-	apiMux.HandleFunc("POST /logout/all", authHandler.LogoutAllDevices)
+	apiMux.HandleFunc("POST /logout/all", protected(authHandler.LogoutAllDevices))
 
 	// Users
 	apiMux.HandleFunc("POST /users", userHandler.CreateUser)
