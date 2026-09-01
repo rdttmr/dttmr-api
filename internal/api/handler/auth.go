@@ -28,6 +28,8 @@ func NewAuthHandler(authService *domain.AuthService) *AuthHandler {
 // @Param payload body request.LoginPayload true "Login payload"
 // @Success 200 {object} domain.TokenPair
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "email not found"
+// @Error 401 {object} response.ErrorResponse "password is wrong"
 // @Error 500 {object} response.ErrorResponse "failed to login"
 // @Router /login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
