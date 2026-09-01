@@ -25,7 +25,7 @@ func NewMux(cfg Config) http.Handler {
 	inviteService := domain.NewInviteService(store.Invite)
 	userService := domain.NewUserService(store.User)
 	registrationService := domain.NewRegistrationService(store, userService, inviteService)
-	listService := domain.NewListService(store.List)
+	listService := domain.NewListService(store, store.List)
 
 	authHandler := handler.NewAuthHandler(authService)
 	inviteHandler := handler.NewInviteHandler(inviteService)
