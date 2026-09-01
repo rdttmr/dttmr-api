@@ -8,12 +8,11 @@ import (
 )
 
 var (
-	ErrListIDEmpty        = errors.New("list id must not be empty")
-	ErrListNameEmpty      = errors.New("list name must not be empty")
-	ErrUserIDEmpty        = errors.New("user id must not be empty")
-	ErrListItemIDEmpty    = errors.New("list item id must not be empty")
-	ErrListItemTitleEmpty = errors.New("list item title must not be empty")
-	ErrUserNotInList      = errors.New("user not in list")
+	ErrListIDMissing        = errors.New("list id is required")
+	ErrListNameMissing      = errors.New("list name is required")
+	ErrListItemIDMissing    = errors.New("list item id is required")
+	ErrListItemTitleMissing = errors.New("list item title is required")
+	ErrUserNotInList        = errors.New("user not in list")
 )
 
 type List struct {
@@ -59,7 +58,7 @@ func NewListService(r ListRepository) *ListService {
 
 func (s *ListService) CreateList(ctx context.Context, authUserID string, name string) (*List, error) {
 	if name == "" {
-		return nil, ErrListNameEmpty
+		return nil, ErrListNameMissing
 	}
 
 	list, err := s.repo.CreateList(ctx, name)
@@ -77,7 +76,7 @@ func (s *ListService) CreateList(ctx context.Context, authUserID string, name st
 
 func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID string) error {
 	if listID == "" {
-		return ErrListIDEmpty
+		return ErrListIDMissing
 	}
 
 	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
@@ -93,10 +92,10 @@ func (s *ListService) GetLists(ctx context.Context, authUserID string) ([]List, 
 
 func (s *ListService) AddUserToList(ctx context.Context, authUserID string, listID string, userID string) error {
 	if listID == "" {
-		return ErrListIDEmpty
+		return ErrListIDMissing
 	}
 	if userID == "" {
-		return ErrUserIDEmpty
+		return ErrUserIDMissing
 	}
 
 	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
@@ -108,10 +107,10 @@ func (s *ListService) AddUserToList(ctx context.Context, authUserID string, list
 
 func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string, listID string, userID string) error {
 	if listID == "" {
-		return ErrListIDEmpty
+		return ErrListIDMissing
 	}
 	if userID == "" {
-		return ErrUserIDEmpty
+		return ErrUserIDMissing
 	}
 
 	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
@@ -123,10 +122,10 @@ func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string,
 
 func (s *ListService) CreateListItem(ctx context.Context, authUserID string, listID string, title string) (*ListItem, error) {
 	if listID == "" {
-		return nil, ErrListIDEmpty
+		return nil, ErrListIDMissing
 	}
 	if title == "" {
-		return nil, ErrListItemTitleEmpty
+		return nil, ErrListItemTitleMissing
 	}
 
 	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
@@ -138,7 +137,7 @@ func (s *ListService) CreateListItem(ctx context.Context, authUserID string, lis
 
 func (s *ListService) DeleteListItem(ctx context.Context, authUserID string, listItemID string) error {
 	if listItemID == "" {
-		return ErrListItemIDEmpty
+		return ErrListItemIDMissing
 	}
 
 	if err := s.userAllowedToAccessListItem(ctx, authUserID, listItemID); err != nil {
@@ -150,10 +149,10 @@ func (s *ListService) DeleteListItem(ctx context.Context, authUserID string, lis
 
 func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, listItemID string, title string, isCompleted bool) error {
 	if listItemID == "" {
-		return ErrListItemIDEmpty
+		return ErrListItemIDMissing
 	}
 	if title == "" {
-		return ErrListItemTitleEmpty
+		return ErrListItemTitleMissing
 	}
 
 	if err := s.userAllowedToAccessListItem(ctx, authUserID, listItemID); err != nil {
@@ -165,7 +164,7 @@ func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, lis
 
 func (s *ListService) SetListItemCompleted(ctx context.Context, authUserID string, listItemID string, isCompleted bool) error {
 	if listItemID == "" {
-		return ErrListItemIDEmpty
+		return ErrListItemIDMissing
 	}
 
 	if err := s.userAllowedToAccessListItem(ctx, authUserID, listItemID); err != nil {
@@ -177,7 +176,7 @@ func (s *ListService) SetListItemCompleted(ctx context.Context, authUserID strin
 
 func (s *ListService) GetListItems(ctx context.Context, authUserID string, listID string) ([]ListItem, error) {
 	if listID == "" {
-		return nil, ErrListIDEmpty
+		return nil, ErrListIDMissing
 	}
 
 	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
