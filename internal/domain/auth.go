@@ -14,6 +14,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	ErrEmailNotFound = errors.New("email not found")
+	ErrPasswordWrong = errors.New("password is wrong")
+)
+
 type AuthRepository interface {
 	GetUserById(ctx context.Context, id string) (*AuthUser, error)
 	GetUserByEmail(ctx context.Context, email string) (*AuthUser, error)
@@ -71,7 +76,7 @@ func (s *AuthService) Authenticate(ctx context.Context, email string, password s
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return user, errors.New("invalid email or password")
+			return user, ErrPasswordWrong
 		}
 		return user, err
 	}

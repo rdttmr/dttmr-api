@@ -36,6 +36,9 @@ func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*domain.Au
 		email,
 	).Scan(&user.ID, &user.Email, &user.Name, &user.PasswordHash)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrEmailNotFound
+		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 

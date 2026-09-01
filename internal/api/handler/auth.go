@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -41,8 +42,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.AuthService.Login(ctx, payload.Email, payload.Password)
 	if err != nil {
+		if errors.Is(err, domain.ErrEmailNotFound) {
+			response.Error(ctx, w, http.StatusUnauthorized, "email not found")
+		} else if errors.Is(err, domain.ErrPasswordWrong) {
+			response.Error(ctx, w, http.StatusUnauthorized, "password is wrong")
+		} else {
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to login")
+		}
+
 		slog.ErrorContext(ctx, "failed to login", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to login")
 		return
 	}
 
