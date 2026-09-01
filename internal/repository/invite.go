@@ -80,6 +80,9 @@ func (r *InviteRepo) GetInvite(ctx context.Context, code string) (*domain.Invite
 		code,
 	).Scan(&invite.ID, &invite.Code, &invite.ExpiresAt, &invite.ConsumedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrInviteInvalid
+		}
 		return nil, fmt.Errorf("failed to get invite: %w", err)
 	}
 
