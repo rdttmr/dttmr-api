@@ -126,6 +126,7 @@ func (r *ListRepo) CreateListItem(ctx context.Context, listID string, title stri
 		return nil, fmt.Errorf("failed to insert list item: %w", err)
 	}
 
+	l.ListID = listID
 	return l, nil
 }
 
