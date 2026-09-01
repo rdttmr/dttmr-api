@@ -69,7 +69,7 @@ func (s *ListService) CreateList(ctx context.Context, authUserID string, name st
 			return err
 		}
 
-		err = s.repo.AddUserToList(ctx, list.ID, authUserID)
+		err = s.repo.AddUserToList(ctx, l.ID, authUserID)
 		if err != nil {
 			return err
 		}
