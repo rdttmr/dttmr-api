@@ -11,8 +11,11 @@ import (
 )
 
 type Config struct {
-	Database  *sql.DB
-	JWTSecret string
+	Database         *sql.DB
+	JWTSecret        string
+	ServiceVersion   string
+	ServiceCommit    string
+	ServiceBuildTime string
 }
 
 func NewMux(cfg Config) http.Handler {
@@ -32,6 +35,8 @@ func NewMux(cfg Config) http.Handler {
 	protected := middleware.WithJWT(authService)
 
 	apiMux := http.NewServeMux()
+	apiMux.HandleFunc("GET /version", handler.VersionHandler(
+		cfg.ServiceVersion, cfg.ServiceCommit, cfg.ServiceBuildTime))
 	apiMux.HandleFunc("GET /health", handler.HealthHandler)
 
 	// Auth
