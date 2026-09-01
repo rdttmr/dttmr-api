@@ -128,3 +128,33 @@ func (r *InviteRepo) CountInvites(ctx context.Context, userID string) (int, erro
 
 	return count, nil
 }
+
+func (r *InviteRepo) CountInvitesStructured(ctx context.Context, userID string) (*domain.InviteCounts, error) {
+	var counts domain.InviteCounts
+	conn := r.conn(ctx)
+	err := conn.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1 AND expires_at > NOW() AND consumed_at IS NULL",
+		userID,
+	).Scan(&counts.Active)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count active invites: %w", err)
+	}
+
+	err = conn.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1 AND expires_at < NOW() AND consumed_at IS NULL",
+		userID,
+	).Scan(&counts.Expired)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count expired invites: %w", err)
+	}
+
+	err = conn.QueryRowContext(ctx,
+		"SELECT COUNT(consumed_at) FROM invites WHERE inviter_user_id=$1",
+		userID,
+	).Scan(&counts.Used)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count consumed invites: %w", err)
+	}
+
+	return &counts, nil
+}
