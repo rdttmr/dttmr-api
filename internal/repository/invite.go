@@ -81,10 +81,10 @@ func (r *InviteRepo) GetInvite(ctx context.Context, code string) (*domain.Invite
 	return &invite, nil
 }
 
-func (r *InviteRepo) GetInvites(ctx context.Context, userID string) ([]domain.Invite, error) {
+func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, count int) ([]domain.Invite, error) {
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT id, code, expires_at, consumed_at FROM invites WHERE inviter_user_id=$1",
-		userID,
+		"SELECT id, code, expires_at, consumed_at FROM invites WHERE inviter_user_id=$1 ORDER BY created_at DESC OFFSET $2 LIMIT $3",
+		userID, offset, count,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -106,4 +106,17 @@ func (r *InviteRepo) GetInvites(ctx context.Context, userID string) ([]domain.In
 	}
 
 	return invites, nil
+}
+
+func (r *InviteRepo) CountInvites(ctx context.Context, userID string) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1",
+		userID,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count invites: %w", err)
+	}
+
+	return count, nil
 }

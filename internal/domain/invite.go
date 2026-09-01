@@ -25,7 +25,8 @@ type InviteRepository interface {
 	DeleteInvite(ctx context.Context, userID string, inviteID string) error
 	ConsumeInvite(ctx context.Context, inviteID string, inviteeUserID string) error
 	GetInvite(ctx context.Context, code string) (*Invite, error)
-	GetInvites(ctx context.Context, userID string) ([]Invite, error)
+	GetInvites(ctx context.Context, userID string, offset int, count int) ([]Invite, error)
+	CountInvites(ctx context.Context, userID string) (int, error)
 }
 
 type InviteService struct {
@@ -89,10 +90,19 @@ func (s *InviteService) GetInvite(ctx context.Context, code string) (*Invite, er
 	return invite, nil
 }
 
-func (s *InviteService) GetInvites(ctx context.Context, userID string) ([]Invite, error) {
+func (s *InviteService) GetInvites(ctx context.Context, userID string, page int, countPerPage int) ([]Invite, error) {
 	if userID == "" {
 		return nil, ErrUserIDMissing
 	}
 
-	return s.repo.GetInvites(ctx, userID)
+	offset := (page - 1) * countPerPage
+	return s.repo.GetInvites(ctx, userID, offset, countPerPage)
+}
+
+func (s *InviteService) CountInvites(ctx context.Context, userID string) (int, error) {
+	if userID == "" {
+		return 0, ErrUserIDMissing
+	}
+
+	return s.repo.CountInvites(ctx, userID)
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/robindittmar/dttmr-api/internal/api/response"
 	"github.com/robindittmar/dttmr-api/internal/domain"
@@ -94,11 +95,58 @@ func (h *InviteHandler) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 // @Tags Invite
 // @Accept json
 // @Produce json
-// @Success 200 {object} []domain.Invite
+// @Param page query int false "page"
+// @Param count query int false "count"
+// @Success 200 {object} response.Paginated[domain.Invite]
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 400 {object} response.ErrorResponse "invalid value for page"
+// @Error 400 {object} response.ErrorResponse "invalid value for count"
 // @Error 500 {object} response.ErrorResponse "failed to get invites"
 // @Router /user/invites [get]
 func (h *InviteHandler) GetInvites(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	pageStr := r.URL.Query().Get("page")
+	if pageStr == "" {
+		pageStr = "1"
+	}
+	countStr := r.URL.Query().Get("count")
+	if countStr == "" {
+		countStr = "10"
+	}
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil {
+		slog.ErrorContext(ctx,
+			"failed to read page from query",
+			slog.String("page", pageStr))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	count, err := strconv.Atoi(countStr)
+	if err != nil {
+		slog.ErrorContext(ctx,
+			"failed to read count from query",
+			slog.String("count", countStr))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	if page < 1 {
+		slog.ErrorContext(ctx,
+			"page parameter is invalid",
+			slog.Int("page", page))
+		response.Error(ctx, w, http.StatusBadRequest, "invalid value for page")
+		return
+	}
+	if count <= 0 {
+		slog.ErrorContext(ctx,
+			"count parameter is invalid",
+			slog.Int("count", count))
+		response.Error(ctx, w, http.StatusBadRequest, "invalid value for count")
+		return
+	}
 
 	authContext, err := domain.GetAuthContext(ctx)
 	if err != nil {
@@ -107,12 +155,23 @@ func (h *InviteHandler) GetInvites(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	invites, err := h.InviteService.GetInvites(ctx, authContext.UserID)
+	invites, err := h.InviteService.GetInvites(ctx, authContext.UserID, page, count)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to get invites", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to get invites")
 		return
 	}
 
-	response.JSON(ctx, w, http.StatusOK, invites)
+	total, err := h.InviteService.CountInvites(ctx, authContext.UserID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to count invites", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to get invites")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, response.Paginated[domain.Invite]{
+		Count: len(invites),
+		Total: total,
+		Data:  invites,
+	})
 }
