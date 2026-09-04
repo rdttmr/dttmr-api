@@ -17,10 +17,12 @@ type ExerciseRepo struct {
 }
 
 func (r *ExerciseRepo) CreateExercise(ctx context.Context) (*domain.Exercise, error) {
+	_ = ctx
 	return nil, nil
 }
 
 func (r *ExerciseRepo) DeleteExercise(ctx context.Context, id string) error {
+	_, _ = ctx, id
 	return nil
 }
 
