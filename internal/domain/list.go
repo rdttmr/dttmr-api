@@ -44,6 +44,7 @@ type ListRepository interface {
 	CreateListItem(ctx context.Context, listID string, title string) (*ListItem, error)
 	DeleteListItem(ctx context.Context, listItemID string) error
 	UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error
+	SetListItemTitle(ctx context.Context, listItemID string, title string) error
 	SetListItemCompleted(ctx context.Context, listItemID string, isCompleted bool) error
 	GetListItems(ctx context.Context, listID string) ([]ListItem, error)
 }
@@ -170,6 +171,21 @@ func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, lis
 	}
 
 	return s.repo.UpdateListItem(ctx, listItemID, title, isCompleted)
+}
+
+func (s *ListService) SetListItemTitle(ctx context.Context, authUserID string, listItemID string, title string) error {
+	if listItemID == "" {
+		return ErrListItemIDMissing
+	}
+	if title == "" {
+		return ErrListItemTitleMissing
+	}
+
+	if err := s.userAllowedToAccessListItem(ctx, authUserID, listItemID); err != nil {
+		return err
+	}
+
+	return s.repo.SetListItemTitle(ctx, listItemID, title)
 }
 
 func (s *ListService) SetListItemCompleted(ctx context.Context, authUserID string, listItemID string, isCompleted bool) error {

@@ -353,6 +353,56 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 	response.Status(w, http.StatusNoContent)
 }
 
+// SetListItemTitle handles updating "title" of a list item
+//
+// @Summary Updates "title" of list item
+// @Description Update an existing list item, setting the "title" field
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param id path int true "List Item ID"
+// @Param payload body request.SetListItemTitlePayload true "Update list item title payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to set list item title"
+// @Router /lists/items/{id}/title [post]
+func (h *ListHandler) SetListItemTitle(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listItemID := r.PathValue("id")
+	if listItemID == "" {
+		slog.ErrorContext(ctx, "failed to read list item id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	payload, err := request.DecodeJSON[request.SetListItemTitlePayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode set list item title payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.ListService.SetListItemTitle(ctx, authContext.UserID, listItemID, payload.Title)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set list item title", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to set list item title")
+		return
+	}
+
+	slog.InfoContext(ctx, "update list item title successful", slog.String("list_item_id", listItemID))
+	response.Status(w, http.StatusNoContent)
+}
+
 // SetListItemCompleted handles updating "is_completed" of a list item
 //
 // @Summary Updates "is_completed" of list item
@@ -366,8 +416,8 @@ func (h *ListHandler) UpdateListItem(w http.ResponseWriter, r *http.Request) {
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 400 {object} response.ErrorResponse "failed to decode request body"
 // @Error 401 {object} response.ErrorResponse "not authorized"
-// @Error 500 {object} response.ErrorResponse "failed to update list item"
-// @Router /lists/items/{id} [post]
+// @Error 500 {object} response.ErrorResponse "failed to set list item completed"
+// @Router /lists/items/{id}/complete [post]
 func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -399,7 +449,7 @@ func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	slog.InfoContext(ctx, "updated list item completed successful", slog.String("list_item_id", listItemID))
+	slog.InfoContext(ctx, "update list item completed successful", slog.String("list_item_id", listItemID))
 	response.Status(w, http.StatusNoContent)
 }
 
