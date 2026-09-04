@@ -51,7 +51,10 @@ func assignIntFromEnv(key string, target *int) {
 	if val, exists := os.LookupEnv(key); exists {
 		parsed, err := strconv.Atoi(val)
 		if err != nil {
-			slog.Error("failed to parse environment variable", slog.String("var", key), slog.Any("error", err))
+			slog.Error("failed to parse environment variable",
+				slog.String("key", key),
+				slog.String("value", val),
+				slog.Any("error", err))
 		} else {
 			*target = parsed
 		}
