@@ -25,6 +25,10 @@ type UpdateListItemPayload struct {
 	IsCompleted bool   `json:"is_completed"`
 }
 
+type SetListItemTitlePayload struct {
+	Title string `json:"title"`
+}
+
 type SetListItemCompletedPayload struct {
 	IsCompleted bool `json:"is_completed"`
 }

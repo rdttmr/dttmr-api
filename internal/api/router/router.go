@@ -26,11 +26,13 @@ func NewMux(cfg Config) http.Handler {
 	userService := domain.NewUserService(store.User)
 	registrationService := domain.NewRegistrationService(store, userService, inviteService)
 	listService := domain.NewListService(store, store.List)
+	exerciseService := domain.NewExerciseService(store.Exercise)
 
 	authHandler := handler.NewAuthHandler(authService)
 	inviteHandler := handler.NewInviteHandler(inviteService)
 	userHandler := handler.NewUserHandler(userService, authService, registrationService)
 	listHandler := handler.NewListHandler(listService, userService)
+	exerciseHandler := handler.NewExerciseHandler(exerciseService)
 
 	protected := middleware.WithJWT(authService)
 
@@ -66,8 +68,12 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("POST /lists/items", protected(listHandler.CreateListItem))
 	apiMux.Handle("DELETE /lists/items/{id}", protected(listHandler.DeleteListItem))
 	apiMux.Handle("PUT /lists/items", protected(listHandler.UpdateListItem))
-	apiMux.Handle("POST /lists/items/{id}", protected(listHandler.SetListItemCompleted))
+	apiMux.Handle("POST /lists/items/{id}/title", protected(listHandler.SetListItemTitle))
+	apiMux.Handle("POST /lists/items/{id}/complete", protected(listHandler.SetListItemCompleted))
 	apiMux.Handle("GET /lists/{id}", protected(listHandler.GetListItems))
+
+	// Exercises
+	apiMux.Handle("GET /exercises", protected(exerciseHandler.GetExercises))
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", apiMux))

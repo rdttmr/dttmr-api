@@ -4,10 +4,11 @@ import "database/sql"
 
 type Store struct {
 	*Transactor
-	Auth   *AuthRepo
-	Invite *InviteRepo
-	List   *ListRepo
-	User   *UserRepo
+	Auth     *AuthRepo
+	Invite   *InviteRepo
+	List     *ListRepo
+	User     *UserRepo
+	Exercise *ExerciseRepo
 }
 
 func NewStore(db *sql.DB) *Store {
@@ -19,5 +20,6 @@ func NewStore(db *sql.DB) *Store {
 		Invite:     &InviteRepo{r},
 		List:       &ListRepo{r},
 		User:       &UserRepo{r},
+		Exercise:   &ExerciseRepo{r},
 	}
 }

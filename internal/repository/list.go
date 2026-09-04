@@ -150,6 +150,17 @@ func (r *ListRepo) UpdateListItem(ctx context.Context, listItemID string, title 
 	return nil
 }
 
+func (r *ListRepo) SetListItemTitle(ctx context.Context, listItemID string, title string) error {
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE list_items SET title = $1, modified_at = NOW() WHERE id = $2",
+		title, listItemID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update list item title: %w", err)
+	}
+
+	return nil
+}
+
 func (r *ListRepo) SetListItemCompleted(ctx context.Context, listItemID string, isCompleted bool) error {
 	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE list_items SET is_completed = $1, modified_at = NOW() WHERE id = $2",
 		isCompleted, listItemID,
