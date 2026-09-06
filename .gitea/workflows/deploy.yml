@@ -68,7 +68,7 @@ jobs:
     needs: build-and-deploy
     runs-on: ubuntu-latest
     container:
-      image: golang:1.27-bookworm
+      image: node:24-bookworm
     permissions:
       contents: write
     steps:
