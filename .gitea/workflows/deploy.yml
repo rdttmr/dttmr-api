@@ -15,7 +15,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     container:
-      image: golang:1.27-bookworm  # match the go version in go.mod
+      image: golang:1.27-bookworm
     steps:
       - name: Install system dependencies
         run: apt-get update && apt-get install -y --no-install-recommends git openssh-client
@@ -59,3 +59,26 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/kn
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd $DEPLOY_PATH && git pull && docker compose up -d --build"
+
+  sync-dev:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.27-bookworm
+    permissions:
+      contents: write
+    steps:
+      - name: Install system dependencies
+        run: apt-get update && apt-get install -y --no-install-recommends git
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fast-forward dev to main
+        run: |
+          git fetch origin dev:dev
+          git checkout dev
+          git merge --ff-only origin/main
+          git push origin dev
