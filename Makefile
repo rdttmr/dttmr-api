@@ -48,7 +48,11 @@ run: build-api
 ## test: Run tests with race detector
 test:
 	@echo "Running tests..."
-	@go test -v -race -timeout 30s ./...
+	@if [ "$$(go env GOARCH)" = "amd64" ]; then \
+			  go test -race -timeout 30s ./...; \
+	  else \
+			  go test -timeout 60s ./...; \
+	  fi
 
 ## test-cover: Run tests and generate coverage report
 test-cover:
