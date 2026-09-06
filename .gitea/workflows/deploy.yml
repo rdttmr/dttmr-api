@@ -1,0 +1,61 @@
+name: Build and Deploy
+
+# Required secrets
+#   DEPLOY_SSH_KEY  - private key for the deploy user
+#   DEPLOY_HOST     - production host, e.g. YOUR_PROD_HOST
+#   DEPLOY_USER     - ssh user, must be in the `docker` group
+#   DEPLOY_PATH     - destination dir, e.g. /opt/dttmr-api
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.27-bookworm  # match the go version in go.mod
+    steps:
+      - name: Install system dependencies
+        run: apt-get update && apt-get install -y --no-install-recommends git openssh-client
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint
+        run: make lint
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Test
+        run: make test
+
+      - name: Build
+        run: make build
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/kn
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd $DEPLOY_PATH && git pull && docker compose up -d --build"
