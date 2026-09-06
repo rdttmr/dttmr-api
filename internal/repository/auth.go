@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/robindittmar/dttmr-api/internal/domain"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 )
 
 type AuthRepo struct {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/robindittmar/dttmr-api/internal/api/handler"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/handler"
 )
 
 func TestHealthHandler_Success(t *testing.T) {

@@ -8,12 +8,12 @@ import (
 	"os"
 	"time"
 
+	"git.dittmar.dev/robin/dttmr-api/internal/config"
+	"git.dittmar.dev/robin/dttmr-api/internal/database"
+	"git.dittmar.dev/robin/dttmr-api/internal/database/migrations"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
+	"git.dittmar.dev/robin/dttmr-api/internal/repository"
 	"github.com/joho/godotenv"
-	"github.com/robindittmar/dttmr-api/internal/config"
-	"github.com/robindittmar/dttmr-api/internal/database"
-	"github.com/robindittmar/dttmr-api/internal/database/migrations"
-	"github.com/robindittmar/dttmr-api/internal/domain"
-	"github.com/robindittmar/dttmr-api/internal/repository"
 )
 
 var (

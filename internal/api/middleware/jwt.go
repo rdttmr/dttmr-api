@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/robindittmar/dttmr-api/internal/api/response"
-	"github.com/robindittmar/dttmr-api/internal/domain"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/response"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 )
 
 func WithJWT(authService *domain.AuthService) func(http.HandlerFunc) http.HandlerFunc {

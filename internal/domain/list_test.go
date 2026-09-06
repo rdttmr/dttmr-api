@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/robindittmar/dttmr-api/internal/domain"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 	"github.com/stretchr/testify/mock"
 )
 
