@@ -18,7 +18,10 @@ jobs:
       image: golang:1.27-bookworm
     steps:
       - name: Install system dependencies
-        run: apt-get update && apt-get install -y --no-install-recommends git openssh-client
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends git openssh-client curl
+          curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+          apt-get install -y nodejs
 
       - name: Checkout
         uses: actions/checkout@v4
