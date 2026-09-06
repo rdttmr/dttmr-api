@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/robindittmar/dttmr-api/internal/domain"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 )
 
 type ListRepo struct {

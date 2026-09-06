@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
+	"git.dittmar.dev/robin/dttmr-api/internal/api/router"
+	"git.dittmar.dev/robin/dttmr-api/internal/config"
+	"git.dittmar.dev/robin/dttmr-api/internal/database"
+	"git.dittmar.dev/robin/dttmr-api/internal/telemetry"
 	"github.com/joho/godotenv"
-	"github.com/robindittmar/dttmr-api/internal/api/router"
-	"github.com/robindittmar/dttmr-api/internal/config"
-	"github.com/robindittmar/dttmr-api/internal/database"
-	"github.com/robindittmar/dttmr-api/internal/telemetry"
 )
 
 var (

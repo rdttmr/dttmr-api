@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/robindittmar/dttmr-api/internal/api/response"
-	"github.com/robindittmar/dttmr-api/internal/domain"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/response"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 )
 
 type InviteHandler struct {

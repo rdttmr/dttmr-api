@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/robindittmar/dttmr-api/internal/domain"
 )
 
 var m = pgtype.NewMap()

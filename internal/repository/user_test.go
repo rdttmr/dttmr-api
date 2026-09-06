@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/robindittmar/dttmr-api/internal/domain"
 	"github.com/stretchr/testify/assert"
 )
 

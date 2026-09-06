@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/robindittmar/dttmr-api/internal/api/handler"
-	"github.com/robindittmar/dttmr-api/internal/api/middleware"
-	"github.com/robindittmar/dttmr-api/internal/domain"
-	"github.com/robindittmar/dttmr-api/internal/repository"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/handler"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/middleware"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
+	"git.dittmar.dev/robin/dttmr-api/internal/repository"
 )
 
 type Config struct {

@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/robindittmar/dttmr-api/internal/api/response"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/response"
 )
 
 type healthResponse struct {

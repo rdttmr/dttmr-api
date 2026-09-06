@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/robindittmar/dttmr-api/internal/api/request"
-	"github.com/robindittmar/dttmr-api/internal/api/response"
-	"github.com/robindittmar/dttmr-api/internal/domain"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/request"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/response"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 )
 
 type ExerciseHandler struct {
