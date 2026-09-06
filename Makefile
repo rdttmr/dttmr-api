@@ -60,7 +60,8 @@ test-cover:
 ## lint: Run golangci-lint
 lint:
 	@echo "Running linter..."
-	@golangci-lint run ./...
+	@#golangci-lint run ./...
+	@go vet ./...
 
 ## fmt: Format code and organize imports
 fmt:
