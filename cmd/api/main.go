@@ -74,7 +74,7 @@ func run() error {
 	}
 	shutdownTelemetry, err := telemetry.Init(context.Background(), telCfg)
 	if err != nil {
-		slog.Error("failed to initialize telemetry", err)
+		slog.Error("failed to initialize telemetry", slog.Any("error", err))
 		return err
 	}
 	defer func() {
