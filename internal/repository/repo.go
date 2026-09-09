@@ -49,9 +49,9 @@ func (t *Transactor) WithinTx(ctx context.Context, fn func(context.Context) erro
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
-	if err = fn(ctx); err != nil {
+	if err = fn(context.WithValue(ctx, txKey{}, tx)); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -64,10 +64,10 @@ func (t *Transactor) withinSavepoint(ctx context.Context, tx *sql.Tx, fn func(co
 	}
 
 	if err := fn(ctx); err != nil {
-		_, _ = tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT"+name)
+		_, _ = tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT "+name)
 		return err
 	}
 
-	_, err := tx.ExecContext(ctx, "RELEASE SAVEPOINT"+name)
+	_, err := tx.ExecContext(ctx, "RELEASE SAVEPOINT "+name)
 	return err
 }

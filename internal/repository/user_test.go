@@ -1,185 +1,208 @@
 package repository
 
 import (
-	"fmt"
+	"context"
+	"database/sql"
+	"errors"
+	"regexp"
 	"testing"
 	"time"
 
-	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
+)
+
+func newUserRepo(t *testing.T) (*UserRepo, sqlmock.Sqlmock) {
+	t.Helper()
+
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		assert.NoError(t, mock.ExpectationsWereMet())
+		_ = db.Close()
+	})
+
+	return &UserRepo{Repo: NewRepo(NewTransactor(db))}, mock
+}
+
+const (
+	insertUserQuery = `INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id, created_at`
+	deleteUserQuery = `DELETE FROM users WHERE id = $1`
+	updatePassQuery = `UPDATE users SET password_hash = $1 WHERE id = $2`
+	selectUserQuery = `SELECT id, email, name FROM users WHERE email = $1`
 )
 
 func TestUserRepo_CreateUser(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	//repo := NewUserRepo(db)
-
-	//ctx := context.Background()
-	email := "test@example.com"
-	name := "Test User"
-	passwordHash := "hashedpassword123"
-
-	now := time.Now()
-	expectedUser := &domain.User{
-		ID:        "1",
-		Email:     email,
-		Name:      name,
-		CreatedAt: now,
-	}
-
 	t.Run("success", func(t *testing.T) {
-		mock.ExpectBegin()
+		repo, mock := newUserRepo(t)
 
-		mock.ExpectQuery(`^INSERT INTO users \(email, name, password_hash\) VALUES \(\$1, \$2, \$3\) RETURNING id, created_at$`).
-			WithArgs(email, name, passwordHash).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(expectedUser.ID, expectedUser.CreatedAt))
+		createdAt := time.Date(2026, 9, 9, 10, 0, 0, 0, time.UTC)
+		mock.ExpectQuery(regexp.QuoteMeta(insertUserQuery)).
+			WithArgs("robin@dittmar.dev", "Robin", "$2a$10$hash").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"id", "created_at"}).
+					AddRow("2f1c...", createdAt),
+			)
 
-		mock.ExpectCommit()
+		user, err := repo.CreateUser(context.Background(), "robin@dittmar.dev", "Robin", "$2a$10$hash")
 
-		//user, err := repo.CreateUser(ctx, email, name, passwordHash)
-		//assert.NoError(t, err)
-		//assert.Equal(t, expectedUser, user)
-		//assert.NoError(t, mock.ExpectationsWereMet())
+		require.NoError(t, err)
+		require.NotNil(t, user)
+		assert.Equal(t, &domain.User{
+			ID:        "2f1c...",
+			Email:     "robin@dittmar.dev",
+			Name:      "Robin",
+			CreatedAt: createdAt,
+		}, user)
 	})
 
-	t.Run("begin_tx_error", func(t *testing.T) {
-		mock.ExpectBegin().WillReturnError(fmt.Errorf("tx error"))
+	t.Run("db error is wrapped", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
 
-		//user, err := repo.CreateUser(ctx, email, name, passwordHash)
-		//assert.Error(t, err)
-		//assert.Contains(t, err.Error(), "begin transaction")
-		//assert.Nil(t, user)
-		//assert.NoError(t, mock.ExpectationsWereMet())
-	})
+		dbErr := errors.New("duplicate key value violates unique constraint")
+		mock.ExpectQuery(regexp.QuoteMeta(insertUserQuery)).
+			WithArgs("robin@dittmar.dev", "Robin", "$2a$10$hash").
+			WillReturnError(dbErr)
 
-	t.Run("insert_error", func(t *testing.T) {
-		mock.ExpectBegin()
-		mock.ExpectQuery(`^INSERT INTO users \(email, name, password_hash\) VALUES \(\$1, \$2, \$3\) RETURNING id, created_at$`).
-			WithArgs(email, name, passwordHash).
-			WillReturnError(fmt.Errorf("insert error"))
-		mock.ExpectRollback()
+		user, err := repo.CreateUser(context.Background(), "robin@dittmar.dev", "Robin", "$2a$10$hash")
 
-		//user, err := repo.CreateUser(ctx, email, name, passwordHash)
-		//assert.Error(t, err)
-		//assert.Contains(t, err.Error(), "failed to insert user")
-		//assert.Nil(t, user)
-		//assert.NoError(t, mock.ExpectationsWereMet())
-	})
-
-	t.Run("commit_error", func(t *testing.T) {
-		mock.ExpectBegin()
-		mock.ExpectQuery(`^INSERT INTO users \(email, name, password_hash\) VALUES \(\$1, \$2, \$3\) RETURNING id, created_at$`).
-			WithArgs(email, name, passwordHash).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(expectedUser.ID, expectedUser.CreatedAt))
-		mock.ExpectCommit().WillReturnError(fmt.Errorf("commit error"))
-
-		//user, err := repo.CreateUser(ctx, email, name, passwordHash)
-		//assert.Error(t, err)
-		//assert.Contains(t, err.Error(), "commit transaction")
-		//assert.Nil(t, user)
-		//assert.NoError(t, mock.ExpectationsWereMet())
+		assert.Nil(t, user)
+		assert.ErrorIs(t, err, dbErr)
+		assert.ErrorContains(t, err, "failed to insert user")
 	})
 }
 
-//func TestUserRepo_CreateUser2(t *testing.T) {
-//	email := "test@example.com"
-//	name := "Test User"
-//	passwordHash := "hashedpassword123"
-//	now := time.Now()
-//	expectedID := "42"
-//
-//	insertQuery := regexp.QuoteMeta(
-//		"INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id, created_at",
-//	)
-//
-//	testCases := []struct {
-//		name          string
-//		setupMock     func(mock sqlmock.Sqlmock)
-//		expectedError string
-//	}{
-//		{
-//			name: "Success: User created perfectly",
-//			setupMock: func(mock sqlmock.Sqlmock) {
-//				mock.ExpectBegin()
-//
-//				rows := sqlmock.NewRows([]string{"id", "created_at"}).
-//					AddRow(expectedID, now)
-//
-//				mock.ExpectQuery(insertQuery).
-//					WithArgs(email, name, passwordHash).
-//					WillReturnRows(rows)
-//
-//				mock.ExpectCommit()
-//			},
-//			expectedError: "",
-//		},
-//		{
-//			name: "Failure: Database connection fails on BeginTx",
-//			setupMock: func(mock sqlmock.Sqlmock) {
-//				mock.ExpectBegin().WillReturnError(errors.New("db connection failed"))
-//			},
-//			expectedError: "begin transaction: db connection failed",
-//		},
-//		{
-//			name: "Failure: Query fails (e.g., duplicate email)",
-//			setupMock: func(mock sqlmock.Sqlmock) {
-//				mock.ExpectBegin()
-//
-//				mock.ExpectQuery(insertQuery).
-//					WithArgs(email, name, passwordHash).
-//					WillReturnError(errors.New("unique constraint violation"))
-//
-//				mock.ExpectRollback()
-//			},
-//			expectedError: "failed to insert user: unique constraint violation",
-//		},
-//		{
-//			name: "Failure: Commit fails (e.g., network timeout)",
-//			setupMock: func(mock sqlmock.Sqlmock) {
-//				mock.ExpectBegin()
-//
-//				rows := sqlmock.NewRows([]string{"id", "created_at"}).
-//					AddRow(expectedID, now)
-//
-//				mock.ExpectQuery(insertQuery).
-//					WithArgs(email, name, passwordHash).
-//					WillReturnRows(rows)
-//
-//				mock.ExpectCommit().WillReturnError(errors.New("commit timeout"))
-//			},
-//			expectedError: "commit transaction: commit timeout",
-//		},
-//	}
-//
-//	for _, tc := range testCases {
-//		t.Run(tc.name, func(t *testing.T) {
-//			db, mock, err := sqlmock.New()
-//			require.NoError(t, err)
-//			defer db.Close()
-//
-//			tc.setupMock(mock)
-//
-//			//repo := NewUserRepo(db)
-//			//
-//			//user, err := repo.CreateUser(context.Background(), email, name, passwordHash)
-//
-//			if tc.expectedError != "" {
-//				require.Error(t, err)
-//				assert.Contains(t, err.Error(), tc.expectedError)
-//				//assert.Nil(t, user)
-//			} else {
-//				require.NoError(t, err)
-//				//require.NotNil(t, user)
-//				//assert.Equal(t, expectedID, user.ID)
-//				//assert.Equal(t, email, user.Email)
-//				//assert.Equal(t, name, user.Name)
-//				//assert.Equal(t, now, user.CreatedAt)
-//			}
-//
-//			assert.NoError(t, mock.ExpectationsWereMet())
-//		})
-//	}
-//}
+func TestUserRepo_DeleteUser(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
+
+		mock.ExpectExec(regexp.QuoteMeta(deleteUserQuery)).
+			WithArgs("user-1").
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		assert.NoError(t, repo.DeleteUser(context.Background(), "user-1"))
+	})
+
+	t.Run("unknown id is not reported", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
+
+		mock.ExpectExec(regexp.QuoteMeta(deleteUserQuery)).
+			WithArgs("does-not-exist").
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		assert.NoError(t, repo.DeleteUser(context.Background(), "does-not-exist"))
+	})
+
+	t.Run("db error is wrapped", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
+
+		dbErr := errors.New("connection reset")
+		mock.ExpectExec(regexp.QuoteMeta(deleteUserQuery)).
+			WithArgs("user-1").
+			WillReturnError(dbErr)
+
+		err := repo.DeleteUser(context.Background(), "user-1")
+
+		assert.ErrorIs(t, err, dbErr)
+		assert.ErrorContains(t, err, "failed to delete user")
+	})
+}
+
+func TestUserRepo_ChangePassword(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
+
+		mock.ExpectExec(regexp.QuoteMeta(updatePassQuery)).
+			WithArgs("$2a$10$newhash", "user-1").
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		assert.NoError(t, repo.ChangePassword(context.Background(), "user-1", "$2a$10$newhash"))
+	})
+
+	t.Run("db error is wrapped", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
+
+		dbErr := errors.New("deadlock detected")
+		mock.ExpectExec(regexp.QuoteMeta(updatePassQuery)).
+			WithArgs("$2a$10$newhash", "user-1").
+			WillReturnError(dbErr)
+
+		err := repo.ChangePassword(context.Background(), "user-1", "$2a$10$newhash")
+
+		assert.ErrorIs(t, err, dbErr)
+		assert.ErrorContains(t, err, "failed to update user")
+	})
+}
+
+func TestUserRepo_UsesTransactionFromContext(t *testing.T) {
+	repo, mock := newUserRepo(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(deleteUserQuery)).
+		WithArgs("user-1").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	tx, err := repo.db.BeginTx(context.Background(), nil)
+	require.NoError(t, err)
+
+	ctx := context.WithValue(context.Background(), txKey{}, tx)
+	require.NoError(t, repo.DeleteUser(ctx, "user-1"))
+	require.NoError(t, tx.Commit())
+}
+
+func TestUserRepo_GetUserByEmail(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
+
+		mock.ExpectQuery(regexp.QuoteMeta(selectUserQuery)).
+			WithArgs("robin@dittmar.dev").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"id", "email", "name"}).
+					AddRow("user-1", "robin@dittmar.dev", "Robin"),
+			)
+
+		user, err := repo.GetUserByEmail(context.Background(), "robin@dittmar.dev")
+
+		require.NoError(t, err)
+		require.NotNil(t, user)
+		assert.Equal(t, "user-1", user.ID)
+		assert.Equal(t, "robin@dittmar.dev", user.Email)
+		assert.Equal(t, "Robin", user.Name)
+		assert.Zero(t, user.CreatedAt) // not selected by this query
+	})
+
+	t.Run("not found stays matchable via errors.Is", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
+
+		mock.ExpectQuery(regexp.QuoteMeta(selectUserQuery)).
+			WithArgs("nobody@dittmar.dev").
+			WillReturnError(sql.ErrNoRows)
+
+		user, err := repo.GetUserByEmail(context.Background(), "nobody@dittmar.dev")
+
+		assert.Nil(t, user)
+		assert.ErrorIs(t, err, sql.ErrNoRows)
+		assert.ErrorContains(t, err, "failed to get user")
+	})
+
+	t.Run("scan error on type mismatch", func(t *testing.T) {
+		repo, mock := newUserRepo(t)
+
+		mock.ExpectQuery(regexp.QuoteMeta(selectUserQuery)).
+			WithArgs("robin@dittmar.dev").
+			WillReturnRows(
+				sqlmock.NewRows([]string{"id", "email", "name"}).
+					AddRow(nil, "robin@dittmar.dev", "Robin"),
+			)
+
+		user, err := repo.GetUserByEmail(context.Background(), "robin@dittmar.dev")
+
+		assert.Nil(t, user)
+		assert.Error(t, err)
+	})
+}
