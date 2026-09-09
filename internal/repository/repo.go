@@ -49,9 +49,9 @@ func (t *Transactor) WithinTx(ctx context.Context, fn func(context.Context) erro
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
-	if err = fn(ctx); err != nil {
+	if err = fn(context.WithValue(ctx, txKey{}, tx)); err != nil {
 		return err
 	}
 	return tx.Commit()
