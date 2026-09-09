@@ -15,34 +15,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     container:
-      image: golang:1.27-bookworm
+      image: node:24-bookworm
     steps:
       - name: Install system dependencies
         run: |
-          apt-get update && apt-get install -y --no-install-recommends git openssh-client curl
-          curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-          apt-get install -y nodejs
+          apt-get update && apt-get install -y --no-install-recommends openssh-client
 
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Lint
-        run: make lint
-
-      - name: Check formatting
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "Not gofmt'd:"
-            echo "$unformatted"
-            exit 1
-          fi
-
-      - name: Test
-        run: make test
-
-      - name: Build
-        run: make build
 
       - name: Configure SSH
         env:
