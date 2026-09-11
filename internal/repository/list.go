@@ -107,6 +107,7 @@ func (r *ListRepo) LockUsersLists(ctx context.Context, userID string) ([]string,
 	if err != nil {
 		return nil, fmt.Errorf("failed to lock users lists: %w", err)
 	}
+	defer rows.Close()
 
 	ids := make([]string, 0, 16)
 	for rows.Next() {

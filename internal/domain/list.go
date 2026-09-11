@@ -152,7 +152,7 @@ func (s *ListService) OrderLists(ctx context.Context, authUserID string, listIDs
 
 		if !isPermutation(listIDs, serverIDs) {
 			slog.ErrorContext(ctx, "no permutation",
-				slog.Any("client_lids_ids", listIDs),
+				slog.Any("client_list_ids", listIDs),
 				slog.Any("server_list_ids", serverIDs))
 			return ErrStaleListIDs
 		}
