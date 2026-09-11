@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -13,6 +14,7 @@ var (
 	ErrListItemIDMissing    = errors.New("list item id is required")
 	ErrListItemTitleMissing = errors.New("list item title is required")
 	ErrUserNotInList        = errors.New("user not in list")
+	ErrStaleListIDs         = errors.New("list ids out of date")
 )
 
 type List struct {
@@ -22,6 +24,7 @@ type List struct {
 	ModifiedAt     time.Time `json:"modified_at"`
 	TotalItems     int       `json:"total_items"`
 	CompletedItems int       `json:"completed_items"`
+	Position       int       `json:"position"`
 }
 
 type ListItem struct {
@@ -39,6 +42,8 @@ type ListRepository interface {
 	GetLists(ctx context.Context, userID string) ([]List, error)
 	AddUserToList(ctx context.Context, listID string, userID string) error
 	RemoveUserFromList(ctx context.Context, listID string, userID string) error
+	OrderLists(ctx context.Context, userID string, listIDs []string) error
+	LockUsersLists(ctx context.Context, userID string) ([]string, error)
 	IsUserInList(ctx context.Context, listID string, userID string) (bool, error)
 	IsUserInListByItemID(ctx context.Context, listItemID string, userID string) (bool, error)
 	CreateListItem(ctx context.Context, listID string, title string) (*ListItem, error)
@@ -129,6 +134,36 @@ func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string,
 	}
 
 	return s.repo.RemoveUserFromList(ctx, listID, userID)
+}
+
+func (s *ListService) OrderLists(ctx context.Context, authUserID string, listIDs []string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if len(listIDs) == 0 {
+		return ErrListIDMissing
+	}
+
+	return s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		serverIDs, err := s.repo.LockUsersLists(ctx, authUserID)
+		if err != nil {
+			return err
+		}
+
+		if !isPermutation(listIDs, serverIDs) {
+			slog.ErrorContext(ctx, "no permutation",
+				slog.Any("client_list_ids", listIDs),
+				slog.Any("server_list_ids", serverIDs))
+			return ErrStaleListIDs
+		}
+
+		err = s.repo.OrderLists(ctx, authUserID, listIDs)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (s *ListService) CreateListItem(ctx context.Context, authUserID string, listID string, title string) (*ListItem, error) {
@@ -256,4 +291,29 @@ func (s *ListService) userAllowedToAccessListItem(ctx context.Context, authUserI
 	}
 
 	return nil
+}
+
+func isPermutation(a []string, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	aMap := make(map[string]struct{}, len(a))
+	for _, v := range a {
+		aMap[strings.ToLower(v)] = struct{}{}
+	}
+
+	seen := make(map[string]struct{}, len(a))
+	for _, v := range b {
+		id := strings.ToLower(v)
+		if _, ok := aMap[id]; !ok {
+			return false
+		}
+		if _, dup := seen[id]; dup {
+			return false
+		}
+		seen[id] = struct{}{}
+	}
+
+	return true
 }

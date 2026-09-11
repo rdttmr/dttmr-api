@@ -38,7 +38,7 @@ func (r *ListRepo) DeleteList(ctx context.Context, listID string) error {
 
 func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT l.id, l.name, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true) FROM lists AS l INNER JOIN list_users ON l.id=list_users.list_id WHERE list_users.user_id = $1",
+		"SELECT l.id, l.name, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true), lu.position FROM lists AS l INNER JOIN list_users AS lu ON l.id=lu.list_id WHERE lu.user_id = $1 ORDER BY lu.position",
 		userID,
 	)
 	if err != nil {
@@ -52,7 +52,7 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 	lists := make([]domain.List, 0, 16)
 	for rows.Next() {
 		var l domain.List
-		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt, &l.TotalItems, &l.CompletedItems)
+		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt, &l.TotalItems, &l.CompletedItems, &l.Position)
 		if err != nil {
 			return nil, err
 		}
@@ -85,6 +85,42 @@ func (r *ListRepo) RemoveUserFromList(ctx context.Context, listID string, userID
 	}
 
 	return nil
+}
+
+func (r *ListRepo) OrderLists(ctx context.Context, userID string, listIDs []string) error {
+	_, err := r.conn(ctx).ExecContext(ctx,
+		"UPDATE list_users AS lu SET position = o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(list_id, idx) WHERE lu.list_id = o.list_id AND lu.user_id=$1",
+		userID, listIDs,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to order lists: %w", err)
+	}
+
+	return nil
+}
+
+func (r *ListRepo) LockUsersLists(ctx context.Context, userID string) ([]string, error) {
+	rows, err := r.conn(ctx).QueryContext(ctx,
+		"SELECT list_id FROM list_users WHERE user_id = $1 FOR UPDATE",
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lock users lists: %w", err)
+	}
+	defer rows.Close()
+
+	ids := make([]string, 0, 16)
+	for rows.Next() {
+		var listID string
+		err = rows.Scan(&listID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read list id: %w", err)
+		}
+
+		ids = append(ids, listID)
+	}
+
+	return ids, nil
 }
 
 func (r *ListRepo) IsUserInList(ctx context.Context, listID string, userID string) (bool, error) {

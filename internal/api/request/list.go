@@ -14,6 +14,10 @@ type RemoveUserFromListPayload struct {
 	Email  string `json:"email"`
 }
 
+type OrderListsPayload struct {
+	ListIDs []string `json:"list_ids"`
+}
+
 type CreateListItemPayload struct {
 	ListID string `json:"list_id"`
 	Title  string `json:"title"`
