@@ -1,7 +1,7 @@
 BEGIN;
 
 ALTER TABLE IF EXISTS list_users
-    ADD COLUMN IF NOT EXISTS position NOT NULL DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS position BIGINT NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_list_users_user_id_position ON list_users (user_id, position);
 
