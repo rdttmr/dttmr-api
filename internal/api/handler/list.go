@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -229,6 +230,52 @@ func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request)
 		slog.String("list_id", payload.ListID),
 		slog.String("email", user.Email),
 	)
+	response.Status(w, http.StatusNoContent)
+}
+
+// OrderLists handles re-ordering a users lists
+//
+// @Summary Order lists of a user
+// @Description Re-assigns the display order of all users lists
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param payload body request.OrderListsPayload true "Order lists payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to order lists"
+// @Router /lists/order [post]
+func (h *ListHandler) OrderLists(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	payload, err := request.DecodeJSON[request.OrderListsPayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode order lists payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.ListService.OrderLists(ctx, authContext.UserID, payload.ListIDs)
+	if err != nil {
+		if errors.Is(err, domain.ErrStaleListIDs) {
+			response.Error(ctx, w, http.StatusBadRequest, "stale list IDs")
+		} else {
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to order list items")
+		}
+
+		slog.ErrorContext(ctx, "failed to order lists", slog.Any("error", err))
+		return
+	}
+
+	slog.InfoContext(ctx, "lists re-ordered successfully", slog.String("user_id", authContext.UserID))
 	response.Status(w, http.StatusNoContent)
 }
 
