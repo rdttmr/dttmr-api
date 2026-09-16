@@ -14,9 +14,8 @@ jobs:
         - go-mod-cache:/go/pkg/mod
         - go-build-cache:/root/.cache/go-build
     steps:
-      - name: Install system dependencies
+      - name: Install Node
         run: |
-          apt-get update && apt-get install -y --no-install-recommends curl
           curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
           apt-get install -y nodejs
 
@@ -46,6 +45,11 @@ jobs:
 
   migrations:
     runs-on: ubuntu-latest
+    container:
+      image: golang:1.27-bookworm
+      volumes:
+        - go-mod-cache:/go/pkg/mod
+        - go-build-cache:/root/.cache/go-build
     services:
       postgres:
         image: postgres:17-alpine
@@ -61,8 +65,13 @@ jobs:
     env:
       DATABASE_URL: postgres://test:test@postgres:5432/test?sslmode=disable
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - run: go test -tags=integration -count=1 ./internal/database/...
+      - name: Install Node
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+          apt-get install -y nodejs
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Migration tests
+        run: go test -tags=integration -count=1 ./internal/database/...
