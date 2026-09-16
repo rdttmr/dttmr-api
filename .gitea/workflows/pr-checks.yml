@@ -47,7 +47,7 @@ jobs:
         - go-build-cache:/root/.cache/go-build
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
