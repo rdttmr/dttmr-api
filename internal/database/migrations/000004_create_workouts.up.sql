@@ -31,7 +31,7 @@ CREATE INDEX idx_exercises_equipment ON exercises USING gin (equipment);
 CREATE INDEX idx_exercises_tags ON exercises USING gin (tags);
 
 
-CREATE TABLE IF NOT EXISTS templates (
+CREATE TABLE templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     notes TEXT,
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS templates (
     modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS template_exercises (
+CREATE TABLE template_exercises (
     template_id UUID NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
     exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     position SMALLINT NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS template_exercises (
 );
 
 
-CREATE TABLE IF NOT EXISTS bodyweight_logs (
+CREATE TABLE bodyweight_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     bodyweight NUMERIC(5,2) NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS bodyweight_logs (
 );
 
 
-CREATE TABLE IF NOT EXISTS workouts (
+CREATE TABLE workouts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS workouts (
 CREATE INDEX idx_workouts_time ON workouts (user_id, started_at DESC);
 
 
-CREATE TABLE IF NOT EXISTS workout_sets (
+CREATE TABLE workout_sets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workout_id UUID NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
     exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE RESTRICT,

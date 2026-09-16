@@ -1,4 +1,4 @@
-DROP INDEX IF EXISTS idx_list_users_position;
+DROP INDEX idx_list_users_position;
 
-ALTER TABLE IF EXISTS list_users
+ALTER TABLE list_users
     DROP COLUMN IF EXISTS position;

@@ -1,3 +1,3 @@
-DROP TABLE IF EXISTS list_items;
-DROP TABLE IF EXISTS list_users;
-DROP TABLE IF EXISTS lists;
+DROP TABLE list_items;
+DROP TABLE list_users;
+DROP TABLE lists;
