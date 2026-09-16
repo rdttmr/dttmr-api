@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS invites (
+CREATE TABLE invites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     inviter_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     invitee_user_id UUID REFERENCES users(id) ON DELETE SET NULL,

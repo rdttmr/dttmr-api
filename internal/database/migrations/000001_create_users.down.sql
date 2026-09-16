@@ -1,2 +1,2 @@
-DROP TABLE IF EXISTS refresh_tokens;
-DROP TABLE IF EXISTS users;
+DROP TABLE refresh_tokens;
+DROP TABLE users;
