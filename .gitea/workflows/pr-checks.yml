@@ -9,16 +9,11 @@ jobs:
   lint-test-and-build:
     runs-on: ubuntu-latest
     container:
-      image: golang:1.27-bookworm
+      image: git.dittmar.dev/robin/ci-go:1.27-node24
       volumes:
         - go-mod-cache:/go/pkg/mod
         - go-build-cache:/root/.cache/go-build
     steps:
-      - name: Install Node
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-          apt-get install -y nodejs
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -46,7 +41,7 @@ jobs:
   migrations:
     runs-on: ubuntu-latest
     container:
-      image: golang:1.27-bookworm
+      image: git.dittmar.dev/robin/ci-go:1.27-node24
       volumes:
         - go-mod-cache:/go/pkg/mod
         - go-build-cache:/root/.cache/go-build
@@ -65,11 +60,6 @@ jobs:
     env:
       DATABASE_URL: postgres://test:test@postgres:5432/test?sslmode=disable
     steps:
-      - name: Install Node
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-          apt-get install -y nodejs
-
       - name: Checkout
         uses: actions/checkout@v4
 
