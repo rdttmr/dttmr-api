@@ -1,3 +1,7 @@
+BEGIN;
+
 DROP TABLE IF EXISTS list_items;
 DROP TABLE IF EXISTS list_users;
 DROP TABLE IF EXISTS lists;
+
+COMMIT;

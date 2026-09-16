@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS exercises (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -141,3 +143,5 @@ UPDATE exercises SET progresses_from_id = (SELECT id FROM exercises WHERE name =
 UPDATE exercises SET progresses_from_id = (SELECT id FROM exercises WHERE name = 'Dead hang')
     WHERE name = 'One arm dead hang';
 
+
+COMMIT;

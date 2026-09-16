@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS invites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     inviter_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -10,3 +12,5 @@ CREATE TABLE IF NOT EXISTS invites (
 
 CREATE UNIQUE INDEX idx_invites_code ON invites (code);
 CREATE INDEX idx_invites_inviter_user_id ON invites (inviter_user_id);
+
+COMMIT;
