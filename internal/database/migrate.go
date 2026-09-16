@@ -50,16 +50,16 @@ func RunMigrations(db *sql.DB, migrationFS fs.FS) error {
 	}
 
 	slog.Info("running database migrations...")
-	err = m.Up()
+	upErr := m.Up()
 
-	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		slog.Error("migration failed, attempting rollback", slog.Any("error", err))
+	if upErr != nil && !errors.Is(upErr, migrate.ErrNoChange) {
+		slog.Error("migration failed, attempting rollback", slog.Any("error", upErr))
 
-		err = tryRollback(m, sourceDriver, version, hasVersion)
-		if err != nil {
-			return fmt.Errorf("migration and rollback failed: %w", err)
+		rbErr := tryRollback(m, sourceDriver, version, hasVersion)
+		if rbErr != nil {
+			return fmt.Errorf("migration failed: %w; rollback failed: %w", upErr, rbErr)
 		}
-		return fmt.Errorf("failed to run database migrations: %w", err)
+		return fmt.Errorf("failed to run database migrations: %w", upErr)
 	}
 
 	slog.Info("database migrations applied successfully")
@@ -78,7 +78,7 @@ func tryRollback(m *migrate.Migrate, src source.Driver, startVersion uint, hasSt
 	if dirty {
 		prev, err := src.Prev(v)
 		if errors.Is(err, os.ErrNotExist) {
-			return m.Force(0)
+			return m.Force(-1)
 		} else if err != nil {
 			return err
 		}
