@@ -1,5 +1,3 @@
-BEGIN;
-
 ALTER TABLE IF EXISTS list_users
     ADD COLUMN IF NOT EXISTS position BIGINT NOT NULL DEFAULT 0;
 
@@ -16,5 +14,3 @@ FROM (SELECT list_id,
       FROM list_users) r
 WHERE lu.list_id = r.list_id
   AND lu.user_id = r.user_id;
-
-COMMIT;

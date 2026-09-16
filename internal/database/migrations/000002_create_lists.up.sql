@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS lists (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
@@ -27,5 +25,3 @@ CREATE TABLE IF NOT EXISTS list_items (
 );
 
 CREATE INDEX idx_list_items_list_id ON list_items(list_id);
-
-COMMIT;
