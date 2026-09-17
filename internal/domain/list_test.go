@@ -113,8 +113,14 @@ func (m *mockListRepository) SetListItemCompleted(ctx context.Context, listItemI
 	return args.Error(0)
 }
 
-func (m *mockListRepository) GetListItems(ctx context.Context, listID string) ([]ListItem, error) {
+func (m *mockListRepository) GetListItemsForList(ctx context.Context, listID string) ([]ListItem, error) {
 	args := m.Called(ctx, listID)
+	items, _ := args.Get(0).([]ListItem)
+	return items, args.Error(1)
+}
+
+func (m *mockListRepository) GetListItemsForUser(ctx context.Context, userID string) ([]ListItem, error) {
+	args := m.Called(ctx, userID)
 	items, _ := args.Get(0).([]ListItem)
 	return items, args.Error(1)
 }
@@ -463,7 +469,7 @@ func TestListService_SetListItemCompleted(t *testing.T) {
 	}
 }
 
-func TestListService_GetListItems(t *testing.T) {
+func TestListService_GetListItemsForList(t *testing.T) {
 	svc, repo, _ := newListService(t)
 
 	want := []ListItem{
@@ -471,13 +477,30 @@ func TestListService_GetListItems(t *testing.T) {
 		{ID: "item-2", ListID: "list-1", Title: "Bread", IsCompleted: true},
 	}
 	repo.On("IsUserInList", mock.Anything, "list-1", "user-1").Return(true, nil)
-	repo.On("GetListItems", mock.Anything, "list-1").Return(want, nil)
+	repo.On("GetListItemsForList", mock.Anything, "list-1").Return(want, nil)
 
-	items, err := svc.GetListItems(context.Background(), "user-1", "list-1")
+	items, err := svc.GetListItemsForList(context.Background(), "user-1", "list-1")
 
 	require.NoError(t, err)
 	assert.Equal(t, want, items)
-	assertCallOrder(t, repo, "IsUserInList", "GetListItems")
+	assertCallOrder(t, repo, "IsUserInList", "GetListItemsForList")
+}
+
+func TestListService_GetListItemsForUser(t *testing.T) {
+	svc, repo, _ := newListService(t)
+
+	want := []ListItem{
+		{ID: "item-1", ListID: "list-1", Title: "Milk"},
+		{ID: "item-2", ListID: "list-1", Title: "Bread", IsCompleted: true},
+		{ID: "item-3", ListID: "list-2", Title: "Bread", IsCompleted: true},
+	}
+	repo.On("GetListItemsForUser", mock.Anything, "user-1").Return(want, nil)
+
+	items, err := svc.GetListItemsForUser(context.Background(), "user-1")
+
+	require.NoError(t, err)
+	assert.Equal(t, want, items)
+	assertCallOrder(t, repo, "GetListItemsForUser")
 }
 
 type guardedOp struct {
@@ -551,12 +574,12 @@ func guardedOps() []guardedOp {
 			},
 		},
 		{
-			name: "GetListItems",
+			name: "GetListItemsForList",
 			expectRepo: func(repo *mockListRepository, err error) {
-				repo.On("GetListItems", mock.Anything, "list-1").Return(nil, err)
+				repo.On("GetListItemsForList", mock.Anything, "list-1").Return(nil, err)
 			},
 			call: func(svc *ListService, userID string) error {
-				items, err := svc.GetListItems(ctx, userID, "list-1")
+				items, err := svc.GetListItemsForList(ctx, userID, "list-1")
 				if items != nil {
 					return errors.New("expected no items on failure")
 				}
@@ -658,6 +681,14 @@ func TestListService_ValidationErrors(t *testing.T) {
 		wantErr error
 	}{
 		{
+			name: "CreateList without auth user id",
+			call: func(svc *ListService) error {
+				_, err := svc.CreateList(ctx, "", "name-1")
+				return err
+			},
+			wantErr: ErrUserIDMissing,
+		},
+		{
 			name: "CreateList without name",
 			call: func(svc *ListService) error {
 				_, err := svc.CreateList(ctx, "user-1", "")
@@ -666,9 +697,19 @@ func TestListService_ValidationErrors(t *testing.T) {
 			wantErr: ErrListNameMissing,
 		},
 		{
+			name:    "DeleteList without auth user id",
+			call:    func(svc *ListService) error { return svc.DeleteList(ctx, "", "list-1") },
+			wantErr: ErrUserIDMissing,
+		},
+		{
 			name:    "DeleteList without list id",
 			call:    func(svc *ListService) error { return svc.DeleteList(ctx, "user-1", "") },
 			wantErr: ErrListIDMissing,
+		},
+		{
+			name:    "AddUserToList without auth user id",
+			call:    func(svc *ListService) error { return svc.AddUserToList(ctx, "", "list-1", "user-2") },
+			wantErr: ErrUserIDMissing,
 		},
 		{
 			name:    "AddUserToList without list id",
@@ -678,6 +719,11 @@ func TestListService_ValidationErrors(t *testing.T) {
 		{
 			name:    "AddUserToList without user id",
 			call:    func(svc *ListService) error { return svc.AddUserToList(ctx, "user-1", "list-1", "") },
+			wantErr: ErrUserIDMissing,
+		},
+		{
+			name:    "RemoveUserFromList without auth user id",
+			call:    func(svc *ListService) error { return svc.RemoveUserFromList(ctx, "", "list-1", "user-2") },
 			wantErr: ErrUserIDMissing,
 		},
 		{
@@ -691,7 +737,7 @@ func TestListService_ValidationErrors(t *testing.T) {
 			wantErr: ErrUserIDMissing,
 		},
 		{
-			name:    "OrderLists without user id",
+			name:    "OrderLists without auth user id",
 			call:    func(svc *ListService) error { return svc.OrderLists(ctx, "", []string{"list-1"}) },
 			wantErr: ErrUserIDMissing,
 		},
@@ -704,6 +750,14 @@ func TestListService_ValidationErrors(t *testing.T) {
 			name:    "OrderLists with empty list ids",
 			call:    func(svc *ListService) error { return svc.OrderLists(ctx, "user-1", []string{}) },
 			wantErr: ErrListIDMissing,
+		},
+		{
+			name: "CreateListItem without auth user id",
+			call: func(svc *ListService) error {
+				_, err := svc.CreateListItem(ctx, "", "list-1", "Milk")
+				return err
+			},
+			wantErr: ErrUserIDMissing,
 		},
 		{
 			name: "CreateListItem without list id",
@@ -722,6 +776,11 @@ func TestListService_ValidationErrors(t *testing.T) {
 			wantErr: ErrListItemTitleMissing,
 		},
 		{
+			name:    "DeleteListItem without auth user id",
+			call:    func(svc *ListService) error { return svc.DeleteListItem(ctx, "", "Milk") },
+			wantErr: ErrUserIDMissing,
+		},
+		{
 			name:    "DeleteListItem without item id",
 			call:    func(svc *ListService) error { return svc.DeleteListItem(ctx, "user-1", "") },
 			wantErr: ErrListItemIDMissing,
@@ -737,6 +796,11 @@ func TestListService_ValidationErrors(t *testing.T) {
 			wantErr: ErrListItemTitleMissing,
 		},
 		{
+			name:    "SetListItemTitle without auth user id",
+			call:    func(svc *ListService) error { return svc.SetListItemTitle(ctx, "", "item-1", "Milk") },
+			wantErr: ErrUserIDMissing,
+		},
+		{
 			name:    "SetListItemTitle without item id",
 			call:    func(svc *ListService) error { return svc.SetListItemTitle(ctx, "user-1", "", "Milk") },
 			wantErr: ErrListItemIDMissing,
@@ -747,17 +811,38 @@ func TestListService_ValidationErrors(t *testing.T) {
 			wantErr: ErrListItemTitleMissing,
 		},
 		{
+			name:    "SetListItemCompleted without auth user id",
+			call:    func(svc *ListService) error { return svc.SetListItemCompleted(ctx, "", "item-1", true) },
+			wantErr: ErrUserIDMissing,
+		},
+		{
 			name:    "SetListItemCompleted without item id",
 			call:    func(svc *ListService) error { return svc.SetListItemCompleted(ctx, "user-1", "", true) },
 			wantErr: ErrListItemIDMissing,
 		},
 		{
-			name: "GetListItems without list id",
+			name: "GetListItemsForList without auth user id",
 			call: func(svc *ListService) error {
-				_, err := svc.GetListItems(ctx, "user-1", "")
+				_, err := svc.GetListItemsForList(ctx, "", "list-1")
+				return err
+			},
+			wantErr: ErrUserIDMissing,
+		},
+		{
+			name: "GetListItemsForList without list id",
+			call: func(svc *ListService) error {
+				_, err := svc.GetListItemsForList(ctx, "user-1", "")
 				return err
 			},
 			wantErr: ErrListIDMissing,
+		},
+		{
+			name: "GetListItemsForUser without user id",
+			call: func(svc *ListService) error {
+				_, err := svc.GetListItemsForUser(ctx, "")
+				return err
+			},
+			wantErr: ErrUserIDMissing,
 		},
 	}
 

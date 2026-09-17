@@ -26,12 +26,14 @@ func NewMux(cfg Config) http.Handler {
 	userService := domain.NewUserService(store.User)
 	registrationService := domain.NewRegistrationService(store, userService, inviteService)
 	listService := domain.NewListService(store, store.List)
+	recipeService := domain.NewRecipeService(store, store.Recipe)
 	exerciseService := domain.NewExerciseService(store.Exercise)
 
 	authHandler := handler.NewAuthHandler(authService)
 	inviteHandler := handler.NewInviteHandler(inviteService)
 	userHandler := handler.NewUserHandler(userService, authService, registrationService)
 	listHandler := handler.NewListHandler(listService, userService)
+	recipeHandler := handler.NewRecipeHandler(recipeService)
 	exerciseHandler := handler.NewExerciseHandler(exerciseService)
 
 	protected := middleware.WithJWT(authService)
@@ -71,7 +73,19 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("PUT /lists/items", protected(listHandler.UpdateListItem))
 	apiMux.Handle("POST /lists/items/{id}/title", protected(listHandler.SetListItemTitle))
 	apiMux.Handle("POST /lists/items/{id}/complete", protected(listHandler.SetListItemCompleted))
-	apiMux.Handle("GET /lists/{id}", protected(listHandler.GetListItems))
+	apiMux.Handle("GET /lists/{id}", protected(listHandler.GetListItemsForList))
+	apiMux.Handle("GET /lists/items", protected(listHandler.GetListItemsForUser))
+
+	// Recipes
+	apiMux.Handle("POST /recipes", protected(recipeHandler.CreateRecipe))
+	apiMux.Handle("DELETE /recipes/{id}", protected(recipeHandler.DeleteRecipe))
+	apiMux.Handle("GET /recipes", protected(recipeHandler.GetRecipes))
+	apiMux.Handle("POST /recipes/{id}/share", protected(recipeHandler.ShareRecipe))
+	apiMux.Handle("POST /recipes/{code}/join", protected(recipeHandler.JoinSharedRecipe))
+	apiMux.Handle("POST /recipes/items", protected(recipeHandler.AddListItemToRecipe))
+	apiMux.Handle("DELETE /recipes/items", protected(recipeHandler.RemoveListItemFromRecipe))
+	apiMux.Handle("GET /recipes/{id}", protected(recipeHandler.GetListItemsFromRecipe))
+	apiMux.Handle("POST /recipes/{id}/uncheck", protected(recipeHandler.UncheckAllItemsFromRecipe))
 
 	// Exercises
 	apiMux.Handle("GET /exercises", protected(exerciseHandler.GetExercises))

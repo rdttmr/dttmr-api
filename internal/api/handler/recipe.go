@@ -1,0 +1,379 @@
+package handler
+
+import (
+	"log/slog"
+	"net/http"
+
+	"git.dittmar.dev/robin/dttmr-api/internal/api/request"
+	"git.dittmar.dev/robin/dttmr-api/internal/api/response"
+	"git.dittmar.dev/robin/dttmr-api/internal/domain"
+)
+
+type RecipeHandler struct {
+	RecipeService *domain.RecipeService
+}
+
+func NewRecipeHandler(recipeService *domain.RecipeService) *RecipeHandler {
+	return &RecipeHandler{RecipeService: recipeService}
+}
+
+// CreateRecipe handles the creation of a recipe
+//
+// @Summary Create recipe route
+// @Description Create a recipe and associate current user with it
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param payload body request.CreateRecipePayload true "Create recipe payload"
+// @Success 201 {object} domain.Recipe
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to create recipe"
+// @Router /recipes [post]
+func (h *RecipeHandler) CreateRecipe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	payload, err := request.DecodeJSON[request.CreateRecipePayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode create recipe payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		return
+	}
+
+	recipe, err := h.RecipeService.CreateRecipe(ctx, authContext.UserID, payload.Name)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to create recipe", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		return
+	}
+
+	slog.InfoContext(ctx, "created recipe successfully", slog.String("recipe_id", recipe.ID))
+	response.JSON(ctx, w, http.StatusCreated, recipe)
+}
+
+// DeleteRecipe handles the deletion of a recipe
+//
+// @Summary Delete recipe route
+// @Description Deletes a recipe, cascading to user associations
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param id path string true "Recipe ID"
+// @Success 204
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 500 {object} response.ErrorResponse "failed to delete recipe"
+// @Router /recipes/{id} [delete]
+func (h *RecipeHandler) DeleteRecipe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	recipeID := r.PathValue("id")
+	if recipeID == "" {
+		slog.ErrorContext(ctx, "failed to read recipe id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to delete list")
+		return
+	}
+
+	err = h.RecipeService.DeleteRecipe(ctx, authContext.UserID, recipeID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to delete list", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to delete list")
+		return
+	}
+
+	slog.InfoContext(ctx, "deleted recipe successfully", slog.String("recipe_id", recipeID))
+	response.Status(w, http.StatusNoContent)
+}
+
+// GetRecipes handles fetching recipes for the current user
+//
+// @Summary Returns all recipes of the user
+// @Description Retrieve all recipes the user is a part of
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Success 200 {object} []domain.Recipe
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to read recipes"
+// @Router /recipes [get]
+func (h *RecipeHandler) GetRecipes(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	recipes, err := h.RecipeService.GetRecipes(ctx, authContext.UserID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get recipes", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to read recipes")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, recipes)
+}
+
+// ShareRecipe handles the creation of a recipe share code
+//
+// @Summary Share recipe route
+// @Description Share a recipe, by creating a share code for it.
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param id path string true "Recipe ID"
+// @Success 200 {object} domain.RecipeShareCode
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 500 {object} response.ErrorResponse "failed to share recipe"
+// @Router /recipes/{id}/share [post]
+func (h *RecipeHandler) ShareRecipe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	recipeID := r.PathValue("id")
+	if recipeID == "" {
+		slog.ErrorContext(ctx, "failed to read recipe id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		return
+	}
+
+	shareCode, err := h.RecipeService.ShareRecipe(ctx, authContext.UserID, recipeID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to create recipe share code", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to share recipe")
+		return
+	}
+
+	slog.InfoContext(ctx, "shared recipe successfully", slog.String("recipe_id", recipeID))
+	response.JSON(ctx, w, http.StatusOK, shareCode)
+}
+
+// JoinSharedRecipe handles joining a shared recipe
+//
+// @Summary Join a shared recipe route
+// @Description Join a shared recipe, by using the share code.
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param code path string true "Share code"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 500 {object} response.ErrorResponse "failed to join recipe"
+// @Router /recipes/{code}/join [post]
+func (h *RecipeHandler) JoinSharedRecipe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	code := r.PathValue("code")
+	if code == "" {
+		slog.ErrorContext(ctx, "failed to read code from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		return
+	}
+
+	// TODO: Check user has access to all list items in the recipe first
+	recipeID, err := h.RecipeService.JoinSharedRecipe(ctx, authContext.UserID, code)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to join recipe by share code",
+			slog.Any("error", err),
+			slog.String("code", code))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to join recipe")
+		return
+	}
+
+	slog.InfoContext(ctx, "joined recipe successfully",
+		slog.String("user_id", authContext.UserID),
+		slog.String("recipe_id", recipeID))
+	response.Status(w, http.StatusNoContent)
+}
+
+// AddListItemToRecipe handles adding an existing list item to a recipe
+//
+// @Summary Add list item to recipe
+// @Description Add an existing list item to an existing recipe
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param payload body request.AddListItemToRecipePayload true "Add list item to recipe payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to add list item to recipe"
+// @Router /recipes/items [post]
+func (h *RecipeHandler) AddListItemToRecipe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	payload, err := request.DecodeJSON[request.AddListItemToRecipePayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode add list item to recipe payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		return
+	}
+
+	// TODO: Check all users of this recipe, if they are allowed to access the given list item
+	err = h.RecipeService.AddListItemToRecipe(ctx, authContext.UserID, payload.RecipeID, payload.ListItemID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to add list item to recipe", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to add list item to recipe")
+		return
+	}
+
+	slog.InfoContext(ctx, "added item to recipe successfully",
+		slog.String("recipe_id", payload.RecipeID),
+		slog.String("list_item_id", payload.ListItemID))
+	response.Status(w, http.StatusNoContent)
+}
+
+// RemoveListItemFromRecipe handles removing a list item from a recipe
+//
+// @Summary Remove list item from recipe
+// @Description Remove a list item from a recipe
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param payload body request.RemoveListItemFromRecipePayload true "Remove list item from recipe payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 500 {object} response.ErrorResponse "failed to remove list item from recipe"
+// @Router /recipes/items [delete]
+func (h *RecipeHandler) RemoveListItemFromRecipe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	payload, err := request.DecodeJSON[request.RemoveListItemFromRecipePayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode remove list item from recipe payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		return
+	}
+
+	err = h.RecipeService.RemoveListItemFromRecipe(ctx, authContext.UserID, payload.RecipeID, payload.ListItemID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to remove list item from recipe", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to remove list item from recipe")
+		return
+	}
+
+	slog.InfoContext(ctx, "removed item from recipe successfully",
+		slog.String("recipe_id", payload.RecipeID),
+		slog.String("list_item_id", payload.ListItemID))
+	response.Status(w, http.StatusNoContent)
+}
+
+// GetListItemsFromRecipe handles fetching list items of a recipe
+//
+// @Summary Returns all list items of a recipes
+// @Description Retrieve all list items of a recipe
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param id path string true "Recipe ID"
+// @Success 200 {object} []domain.ListItem
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to read list items"
+// @Router /recipes/{id} [get]
+func (h *RecipeHandler) GetListItemsFromRecipe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	recipeID := r.PathValue("id")
+	if recipeID == "" {
+		slog.ErrorContext(ctx, "failed to read recipe id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	items, err := h.RecipeService.GetListItemsForRecipe(ctx, authContext.UserID, recipeID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get list items", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, items)
+
+}
+
+// UncheckAllItemsFromRecipe handles unchecking all list items of a recipe
+//
+// @Summary Uncheck list items of recipe route
+// @Description Uncheck all list items part of the recipe
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param id path string true "Recipe ID"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 500 {object} response.ErrorResponse "failed to uncheck all items from recipe"
+// @Router /recipes/{id}/uncheck [post]
+func (h *RecipeHandler) UncheckAllItemsFromRecipe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	recipeID := r.PathValue("id")
+	if recipeID == "" {
+		slog.ErrorContext(ctx, "failed to read recipe id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.RecipeService.UncheckListItemsFromRecipe(ctx, authContext.UserID, recipeID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to uncheck all items from recipe", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to uncheck all items from recipe")
+	}
+
+	slog.InfoContext(ctx, "unchecked all items from recipe successfully", slog.String("recipe_id", recipeID))
+	response.Status(w, http.StatusNoContent)
+}
