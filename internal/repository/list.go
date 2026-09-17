@@ -217,7 +217,7 @@ func (r *ListRepo) GetListItemsForList(ctx context.Context, listID string) ([]do
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get list items: %w", err)
+		return nil, fmt.Errorf("failed to get list items for list: %w", err)
 	}
 	defer rows.Close()
 
@@ -245,11 +245,11 @@ func (r *ListRepo) GetListItemsForUser(ctx context.Context, userID string) ([]do
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get list items: %w", err)
+		return nil, fmt.Errorf("failed to get list items for user: %w", err)
 	}
 	defer rows.Close()
 
-	items := make([]domain.ListItem, 0, 32)
+	items := make([]domain.ListItem, 0, 128)
 	for rows.Next() {
 		var l domain.ListItem
 		err = rows.Scan(&l.ID, &l.ListID, &l.Title, &l.IsCompleted, &l.CreatedAt, &l.ModifiedAt)

@@ -7,6 +7,7 @@ type Store struct {
 	Auth     *AuthRepo
 	Invite   *InviteRepo
 	List     *ListRepo
+	Recipe   *RecipeRepo
 	User     *UserRepo
 	Exercise *ExerciseRepo
 }
@@ -19,6 +20,7 @@ func NewStore(db *sql.DB) *Store {
 		Auth:       &AuthRepo{r},
 		Invite:     &InviteRepo{r},
 		List:       &ListRepo{r},
+		Recipe:     &RecipeRepo{r},
 		User:       &UserRepo{r},
 		Exercise:   &ExerciseRepo{r},
 	}
