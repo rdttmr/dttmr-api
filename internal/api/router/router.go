@@ -71,7 +71,8 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("PUT /lists/items", protected(listHandler.UpdateListItem))
 	apiMux.Handle("POST /lists/items/{id}/title", protected(listHandler.SetListItemTitle))
 	apiMux.Handle("POST /lists/items/{id}/complete", protected(listHandler.SetListItemCompleted))
-	apiMux.Handle("GET /lists/{id}", protected(listHandler.GetListItems))
+	apiMux.Handle("GET /lists/{id}", protected(listHandler.GetListItemsForList))
+	apiMux.Handle("GET /lists/items", protected(listHandler.GetListItemsForUser))
 
 	// Exercises
 	apiMux.Handle("GET /exercises", protected(exerciseHandler.GetExercises))

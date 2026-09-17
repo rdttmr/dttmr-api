@@ -51,7 +51,8 @@ type ListRepository interface {
 	UpdateListItem(ctx context.Context, listItemID string, title string, isCompleted bool) error
 	SetListItemTitle(ctx context.Context, listItemID string, title string) error
 	SetListItemCompleted(ctx context.Context, listItemID string, isCompleted bool) error
-	GetListItems(ctx context.Context, listID string) ([]ListItem, error)
+	GetListItemsForList(ctx context.Context, listID string) ([]ListItem, error)
+	GetListItemsForUser(ctx context.Context, userID string) ([]ListItem, error)
 }
 
 type ListService struct {
@@ -64,6 +65,9 @@ func NewListService(tx Transactor, r ListRepository) *ListService {
 }
 
 func (s *ListService) CreateList(ctx context.Context, authUserID string, name string) (*List, error) {
+	if authUserID == "" {
+		return nil, ErrUserIDMissing
+	}
 	if name == "" {
 		return nil, ErrListNameMissing
 	}
@@ -91,6 +95,9 @@ func (s *ListService) CreateList(ctx context.Context, authUserID string, name st
 }
 
 func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
 	if listID == "" {
 		return ErrListIDMissing
 	}
@@ -103,10 +110,17 @@ func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID 
 }
 
 func (s *ListService) GetLists(ctx context.Context, authUserID string) ([]List, error) {
+	if authUserID == "" {
+		return nil, ErrUserIDMissing
+	}
+
 	return s.repo.GetLists(ctx, authUserID)
 }
 
 func (s *ListService) AddUserToList(ctx context.Context, authUserID string, listID string, userID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
 	if listID == "" {
 		return ErrListIDMissing
 	}
@@ -122,6 +136,9 @@ func (s *ListService) AddUserToList(ctx context.Context, authUserID string, list
 }
 
 func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string, listID string, userID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
 	if listID == "" {
 		return ErrListIDMissing
 	}
@@ -167,6 +184,9 @@ func (s *ListService) OrderLists(ctx context.Context, authUserID string, listIDs
 }
 
 func (s *ListService) CreateListItem(ctx context.Context, authUserID string, listID string, title string) (*ListItem, error) {
+	if authUserID == "" {
+		return nil, ErrUserIDMissing
+	}
 	if listID == "" {
 		return nil, ErrListIDMissing
 	}
@@ -182,6 +202,9 @@ func (s *ListService) CreateListItem(ctx context.Context, authUserID string, lis
 }
 
 func (s *ListService) DeleteListItem(ctx context.Context, authUserID string, listItemID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
 	if listItemID == "" {
 		return ErrListItemIDMissing
 	}
@@ -194,6 +217,9 @@ func (s *ListService) DeleteListItem(ctx context.Context, authUserID string, lis
 }
 
 func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, listItemID string, title string, isCompleted bool) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
 	if listItemID == "" {
 		return ErrListItemIDMissing
 	}
@@ -209,6 +235,9 @@ func (s *ListService) UpdateListItem(ctx context.Context, authUserID string, lis
 }
 
 func (s *ListService) SetListItemTitle(ctx context.Context, authUserID string, listItemID string, title string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
 	if listItemID == "" {
 		return ErrListItemIDMissing
 	}
@@ -224,6 +253,9 @@ func (s *ListService) SetListItemTitle(ctx context.Context, authUserID string, l
 }
 
 func (s *ListService) SetListItemCompleted(ctx context.Context, authUserID string, listItemID string, isCompleted bool) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
 	if listItemID == "" {
 		return ErrListItemIDMissing
 	}
@@ -235,7 +267,10 @@ func (s *ListService) SetListItemCompleted(ctx context.Context, authUserID strin
 	return s.repo.SetListItemCompleted(ctx, listItemID, isCompleted)
 }
 
-func (s *ListService) GetListItems(ctx context.Context, authUserID string, listID string) ([]ListItem, error) {
+func (s *ListService) GetListItemsForList(ctx context.Context, authUserID string, listID string) ([]ListItem, error) {
+	if authUserID == "" {
+		return nil, ErrUserIDMissing
+	}
 	if listID == "" {
 		return nil, ErrListIDMissing
 	}
@@ -244,7 +279,15 @@ func (s *ListService) GetListItems(ctx context.Context, authUserID string, listI
 		return nil, err
 	}
 
-	return s.repo.GetListItems(ctx, listID)
+	return s.repo.GetListItemsForList(ctx, listID)
+}
+
+func (s *ListService) GetListItemsForUser(ctx context.Context, authUserID string) ([]ListItem, error) {
+	if authUserID == "" {
+		return nil, ErrUserIDMissing
+	}
+
+	return s.repo.GetListItemsForUser(ctx, authUserID)
 }
 
 func (s *ListService) userAllowedToAccessList(ctx context.Context, authUserID string, listID string) error {

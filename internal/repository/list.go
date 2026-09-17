@@ -208,7 +208,7 @@ func (r *ListRepo) SetListItemCompleted(ctx context.Context, listItemID string, 
 	return nil
 }
 
-func (r *ListRepo) GetListItems(ctx context.Context, listID string) ([]domain.ListItem, error) {
+func (r *ListRepo) GetListItemsForList(ctx context.Context, listID string) ([]domain.ListItem, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
 		"SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at DESC",
 		listID,
@@ -230,6 +230,33 @@ func (r *ListRepo) GetListItems(ctx context.Context, listID string) ([]domain.Li
 		}
 
 		l.ListID = listID
+		items = append(items, l)
+	}
+
+	return items, nil
+}
+
+func (r *ListRepo) GetListItemsForUser(ctx context.Context, userID string) ([]domain.ListItem, error) {
+	rows, err := r.conn(ctx).QueryContext(ctx,
+		"SELECT id, list_id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id IN (SELECT list_id FROM list_users WHERE user_id = $1) ORDER BY is_completed, modified_at DESC",
+		userID,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get list items: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.ListItem, 0, 32)
+	for rows.Next() {
+		var l domain.ListItem
+		err = rows.Scan(&l.ID, &l.ListID, &l.Title, &l.IsCompleted, &l.CreatedAt, &l.ModifiedAt)
+		if err != nil {
+			return nil, err
+		}
+
 		items = append(items, l)
 	}
 

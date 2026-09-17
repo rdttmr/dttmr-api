@@ -500,19 +500,20 @@ func (h *ListHandler) SetListItemCompleted(w http.ResponseWriter, r *http.Reques
 	response.Status(w, http.StatusNoContent)
 }
 
-// GetListItems handles return all list items of a list
+// GetListItemsForList handles return all list items of a list
 //
 // @Summary Returns all items from a list
 // @Description Retrieve all list items of a list
 // @Tags List
 // @Accept json
 // @Produce json
+// @Param id path int true "List ID"
 // @Success 200 {object} []domain.ListItem
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to read list items"
 // @Router /lists/{id} [get]
-func (h *ListHandler) GetListItems(w http.ResponseWriter, r *http.Request) {
+func (h *ListHandler) GetListItemsForList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	listID := r.PathValue("id")
@@ -529,7 +530,39 @@ func (h *ListHandler) GetListItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := h.ListService.GetListItems(ctx, authContext.UserID, listID)
+	items, err := h.ListService.GetListItemsForList(ctx, authContext.UserID, listID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to read list items", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
+		return
+	}
+
+	response.JSON(ctx, w, http.StatusOK, items)
+}
+
+// GetListItemsForUser handles return all list items of a list
+//
+// @Summary Returns all items from a list
+// @Description Retrieve all list items of a list
+// @Tags List
+// @Accept json
+// @Produce json
+// @Success 200 {object} []domain.ListItem
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to read list items"
+// @Router /lists/items [get]
+func (h *ListHandler) GetListItemsForUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	items, err := h.ListService.GetListItemsForUser(ctx, authContext.UserID)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to read list items", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
