@@ -9,6 +9,7 @@ CREATE TABLE recipe_items (
     recipe_id UUID REFERENCES recipes (id) ON DELETE CASCADE,
     list_item_id UUID REFERENCES list_items (id) ON DELETE CASCADE,
     position BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (recipe_id, list_item_id)
 );
 
