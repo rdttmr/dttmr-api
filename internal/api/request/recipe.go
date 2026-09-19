@@ -4,6 +4,10 @@ type CreateRecipePayload struct {
 	Name string `json:"name"`
 }
 
+type OrderRecipesPayload struct {
+	RecipeIDs []string `json:"recipe_ids"`
+}
+
 type AddListItemToRecipePayload struct {
 	RecipeID   string `json:"recipe_id"`
 	ListItemID string `json:"list_item_id"`

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"strings"
 	"time"
 )
 
@@ -167,7 +166,7 @@ func (s *ListService) OrderLists(ctx context.Context, authUserID string, listIDs
 			return err
 		}
 
-		if !isPermutation(listIDs, serverIDs) {
+		if !IsPermutation(listIDs, serverIDs) {
 			slog.ErrorContext(ctx, "no permutation",
 				slog.Any("client_list_ids", listIDs),
 				slog.Any("server_list_ids", serverIDs))
@@ -334,29 +333,4 @@ func (s *ListService) userAllowedToAccessListItem(ctx context.Context, authUserI
 	}
 
 	return nil
-}
-
-func isPermutation(a []string, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	aMap := make(map[string]struct{}, len(a))
-	for _, v := range a {
-		aMap[strings.ToLower(v)] = struct{}{}
-	}
-
-	seen := make(map[string]struct{}, len(a))
-	for _, v := range b {
-		id := strings.ToLower(v)
-		if _, ok := aMap[id]; !ok {
-			return false
-		}
-		if _, dup := seen[id]; dup {
-			return false
-		}
-		seen[id] = struct{}{}
-	}
-
-	return true
 }

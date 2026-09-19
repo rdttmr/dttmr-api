@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -210,6 +211,52 @@ func (h *RecipeHandler) JoinSharedRecipe(w http.ResponseWriter, r *http.Request)
 	slog.InfoContext(ctx, "joined recipe successfully",
 		slog.String("user_id", authContext.UserID),
 		slog.String("recipe_id", recipeID))
+	response.Status(w, http.StatusNoContent)
+}
+
+// OrderRecipes handles re-ordering a users recipes
+//
+// @Summary Order recipes of a user
+// @Description Re-assigns the display order of all users recipes
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param payload body request.OrderRecipesPayload true "Order recipes payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to order recipes"
+// @Router /recipes/order [post]
+func (h *RecipeHandler) OrderRecipes(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	payload, err := request.DecodeJSON[request.OrderRecipesPayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode order recipes payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.RecipeService.OrderRecipes(ctx, authContext.UserID, payload.RecipeIDs)
+	if err != nil {
+		if errors.Is(err, domain.ErrStaleRecipeIDs) {
+			response.Error(ctx, w, http.StatusBadRequest, "stale recipe ids")
+		} else {
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to order recipes")
+		}
+
+		slog.ErrorContext(ctx, "failed to order recipes", slog.Any("error", err))
+		return
+	}
+
+	slog.InfoContext(ctx, "recipes re-ordered successfully", slog.String("user_id", authContext.UserID))
 	response.Status(w, http.StatusNoContent)
 }
 

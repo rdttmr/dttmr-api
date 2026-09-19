@@ -266,9 +266,9 @@ func (h *ListHandler) OrderLists(w http.ResponseWriter, r *http.Request) {
 	err = h.ListService.OrderLists(ctx, authContext.UserID, payload.ListIDs)
 	if err != nil {
 		if errors.Is(err, domain.ErrStaleListIDs) {
-			response.Error(ctx, w, http.StatusBadRequest, "stale list IDs")
+			response.Error(ctx, w, http.StatusBadRequest, "stale list ids")
 		} else {
-			response.Error(ctx, w, http.StatusInternalServerError, "failed to order list items")
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to order lists")
 		}
 
 		slog.ErrorContext(ctx, "failed to order lists", slog.Any("error", err))
