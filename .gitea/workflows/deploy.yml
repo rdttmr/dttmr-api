@@ -42,7 +42,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd $DEPLOY_PATH && git pull && docker compose up -d --build"
+            "cd $DEPLOY_PATH && git pull && docker compose -f compose.yaml -f compose.pi.yaml up -d --build --remove-orphans"
 
   sync-dev:
     needs: build-and-deploy

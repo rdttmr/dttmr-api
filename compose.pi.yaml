@@ -1,0 +1,9 @@
+services:
+  postgres:
+    networks:
+      - default
+      - db-network
+
+networks:
+  db-network:
+    external: true
