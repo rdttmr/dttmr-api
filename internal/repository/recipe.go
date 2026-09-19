@@ -124,6 +124,42 @@ func (r *RecipeRepo) IsUserInRecipe(ctx context.Context, recipeID string, userID
 	return cnt > 0, nil
 }
 
+func (r *RecipeRepo) OrderUserRecipes(ctx context.Context, userID string, recipeIDs []string) error {
+	_, err := r.conn(ctx).ExecContext(ctx,
+		"UPDATE recipe_users AS ru SET position = o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(recipe_id, idx) WHERE ru.recipe_Id = o.recipe_id AND ru.user_id=$1",
+		userID, recipeIDs,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to order recipes: %w", err)
+	}
+
+	return nil
+}
+
+func (r *RecipeRepo) LockUserRecipes(ctx context.Context, userID string) ([]string, error) {
+	rows, err := r.conn(ctx).QueryContext(ctx,
+		"SELECT recipe_id FROM recipe_users WHERE user_id = $1 FOR UPDATE",
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lock users recipes: %w", err)
+	}
+	defer rows.Close()
+
+	ids := make([]string, 0, 16)
+	for rows.Next() {
+		var recipeID string
+		err = rows.Scan(&recipeID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read recipe id: %w", err)
+		}
+
+		ids = append(ids, recipeID)
+	}
+
+	return ids, nil
+}
+
 func (r *RecipeRepo) AddListItemToRecipe(ctx context.Context, recipeID string, listItemID string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
 		"INSERT INTO recipe_items (recipe_id, list_item_id) VALUES ($1, $2)",

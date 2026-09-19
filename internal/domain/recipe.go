@@ -11,6 +11,7 @@ var (
 	ErrRecipeIDMissing = errors.New("recipe id is required")
 	ErrJoinCodeMissing = errors.New("code is required")
 	ErrUserNotInRecipe = errors.New("user is not in recipe")
+	ErrStaleRecipeIDs  = errors.New("recipe ids out of date")
 )
 
 type Recipe struct {
@@ -34,6 +35,8 @@ type RecipeRepository interface {
 	AddUserToRecipe(ctx context.Context, recipeID string, userID string) error
 	RemoveUserFromRecipe(ctx context.Context, recipeID string, userID string) error
 	IsUserInRecipe(ctx context.Context, recipeID string, userID string) (bool, error)
+	OrderUserRecipes(ctx context.Context, userID string, recipeIDs []string) error
+	LockUserRecipes(ctx context.Context, userID string) ([]string, error)
 	AddListItemToRecipe(ctx context.Context, recipeID string, listItemID string) error
 	RemoveListItemFromRecipe(ctx context.Context, recipeID string, listItemID string) error
 	GetListItemsForRecipe(ctx context.Context, recipeID string) ([]ListItem, error)
@@ -139,6 +142,36 @@ func (s *RecipeService) JoinSharedRecipe(ctx context.Context, authUserID string,
 	}
 
 	return recipeID, nil
+}
+
+func (s *RecipeService) OrderRecipes(ctx context.Context, authUserID string, recipeIDs []string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if len(recipeIDs) == 0 {
+		return ErrRecipeIDMissing
+	}
+
+	return s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		serverIDs, err := s.repo.LockUserRecipes(ctx, authUserID)
+		if err != nil {
+			return err
+		}
+
+		if !IsPermutation(recipeIDs, serverIDs) {
+			slog.ErrorContext(ctx, "no permutation",
+				slog.Any("client_recipe_ids", recipeIDs),
+				slog.Any("server_recipe_ids", serverIDs))
+			return ErrStaleRecipeIDs
+		}
+
+		err = s.repo.OrderUserRecipes(ctx, authUserID, recipeIDs)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (s *RecipeService) AddListItemToRecipe(ctx context.Context, authUserID string, recipeID string, listItemID string) error {
