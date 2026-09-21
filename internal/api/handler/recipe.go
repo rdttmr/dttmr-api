@@ -98,6 +98,56 @@ func (h *RecipeHandler) DeleteRecipe(w http.ResponseWriter, r *http.Request) {
 	response.Status(w, http.StatusNoContent)
 }
 
+// SetRecipeName handles updating "name" of a recipe
+//
+// @Summary Updates "name" of recipe
+// @Description Update an existing recipe, setting the "name" field
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param id path int true "Recipe ID"
+// @Param payload body request.SetRecipeNamePayload true "Update recipe name payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to set recipe name"
+// @Router /recipes/{id}/name [post]
+func (h *RecipeHandler) SetRecipeName(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	recipeID := r.PathValue("id")
+	if recipeID == "" {
+		slog.ErrorContext(ctx, "failed to read recipe id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	payload, err := request.DecodeJSON[request.SetRecipeNamePayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode set recipe name payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.RecipeService.SetRecipeName(ctx, authContext.UserID, recipeID, payload.Name)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set recipe name", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to set recipe name")
+		return
+	}
+
+	slog.InfoContext(ctx, "updated recipe name successfully", slog.String("recipe_id", recipeID))
+	response.Status(w, http.StatusNoContent)
+}
+
 // GetRecipes handles fetching recipes for the current user
 //
 // @Summary Returns all recipes of the user

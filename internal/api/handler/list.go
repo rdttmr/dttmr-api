@@ -99,7 +99,7 @@ func (h *ListHandler) DeleteList(w http.ResponseWriter, r *http.Request) {
 	response.Status(w, http.StatusNoContent)
 }
 
-// SetListName handles updating "name" of a list item
+// SetListName handles updating "name" of a list
 //
 // @Summary Updates "name" of list
 // @Description Update an existing list, setting the "name" field
@@ -145,7 +145,7 @@ func (h *ListHandler) SetListName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "update list name successful", slog.String("list_id", listID))
+	slog.InfoContext(ctx, "updated list name successfully", slog.String("list_id", listID))
 	response.Status(w, http.StatusNoContent)
 }
 

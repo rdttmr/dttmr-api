@@ -32,7 +32,14 @@ func (r *RecipeRepo) DeleteRecipe(ctx context.Context, recipeID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete recipe: %w", err)
 	}
+	return nil
+}
 
+func (r *RecipeRepo) SetRecipeName(ctx context.Context, recipeID string, name string) error {
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE recipes SET name = $2 WHERE id = $1", recipeID, name)
+	if err != nil {
+		return fmt.Errorf("failed to update recipe: %w", err)
+	}
 	return nil
 }
 

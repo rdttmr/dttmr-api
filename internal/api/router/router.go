@@ -80,6 +80,7 @@ func NewMux(cfg Config) http.Handler {
 	// Recipes
 	apiMux.Handle("POST /recipes", protected(recipeHandler.CreateRecipe))
 	apiMux.Handle("DELETE /recipes/{id}", protected(recipeHandler.DeleteRecipe))
+	apiMux.Handle("POST /recipes/{id}/name", protected(recipeHandler.SetRecipeName))
 	apiMux.Handle("GET /recipes", protected(recipeHandler.GetRecipes))
 	apiMux.Handle("POST /recipes/{id}/share", protected(recipeHandler.ShareRecipe))
 	apiMux.Handle("POST /recipes/{code}/join", protected(recipeHandler.JoinSharedRecipe))

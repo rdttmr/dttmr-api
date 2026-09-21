@@ -29,6 +29,7 @@ type RecipeShareCode struct {
 type RecipeRepository interface {
 	CreateRecipe(ctx context.Context, name string) (*Recipe, error)
 	DeleteRecipe(ctx context.Context, recipeID string) error
+	SetRecipeName(ctx context.Context, recipeID string, name string) error
 	GetRecipes(ctx context.Context, userID string) ([]Recipe, error)
 	UpsertShareCodeHash(ctx context.Context, userID string, recipeID string, codeHash string) error
 	GetRecipeIDFromShareCode(ctx context.Context, codeHash string) (string, error)
@@ -92,6 +93,24 @@ func (s *RecipeService) DeleteRecipe(ctx context.Context, authUserID, recipeID s
 	}
 
 	return s.repo.DeleteRecipe(ctx, recipeID)
+}
+
+func (s *RecipeService) SetRecipeName(ctx context.Context, authUserID, recipeID string, name string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if recipeID == "" {
+		return ErrRecipeIDMissing
+	}
+	if name == "" {
+		return ErrNameMissing
+	}
+
+	if err := s.userAllowedToAccessRecipe(ctx, authUserID, recipeID); err != nil {
+		return err
+	}
+
+	return s.repo.SetRecipeName(ctx, recipeID, name)
 }
 
 func (s *RecipeService) GetRecipes(ctx context.Context, authUserID string) ([]Recipe, error) {
