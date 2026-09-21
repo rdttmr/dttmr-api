@@ -14,6 +14,7 @@ var (
 	ErrInviteConsumed  = errors.New("invite is already consumed")
 )
 
+// TODO: `Code` should not live in the database; hash instead.
 type Invite struct {
 	ID         string     `json:"id"`
 	Code       string     `json:"code"`

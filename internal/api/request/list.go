@@ -4,6 +4,10 @@ type CreateListPayload struct {
 	Name string `json:"name"`
 }
 
+type SetListNamePayload struct {
+	Name string `json:"name"`
+}
+
 type AddUserToListPayload struct {
 	ListID string `json:"list_id"`
 	Email  string `json:"email"`

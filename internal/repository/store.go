@@ -9,6 +9,7 @@ type Store struct {
 	List     *ListRepo
 	Recipe   *RecipeRepo
 	User     *UserRepo
+	Group    *GroupRepo
 	Exercise *ExerciseRepo
 }
 
@@ -22,6 +23,7 @@ func NewStore(db *sql.DB) *Store {
 		List:       &ListRepo{r},
 		Recipe:     &RecipeRepo{r},
 		User:       &UserRepo{r},
+		Group:      &GroupRepo{r},
 		Exercise:   &ExerciseRepo{r},
 	}
 }

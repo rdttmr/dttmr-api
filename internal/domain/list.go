@@ -38,6 +38,7 @@ type ListItem struct {
 type ListRepository interface {
 	CreateList(ctx context.Context, name string) (*List, error)
 	DeleteList(ctx context.Context, listID string) error
+	SetListName(ctx context.Context, listID string, name string) error
 	GetLists(ctx context.Context, userID string) ([]List, error)
 	AddUserToList(ctx context.Context, listID string, userID string) error
 	RemoveUserFromList(ctx context.Context, listID string, userID string) error
@@ -106,6 +107,24 @@ func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID 
 	}
 
 	return s.repo.DeleteList(ctx, listID)
+}
+
+func (s *ListService) SetListName(ctx context.Context, authUserID string, listID string, name string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if listID == "" {
+		return ErrListIDMissing
+	}
+	if name == "" {
+		return ErrListNameMissing
+	}
+
+	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
+		return err
+	}
+
+	return s.repo.SetListName(ctx, listID, name)
 }
 
 func (s *ListService) GetLists(ctx context.Context, authUserID string) ([]List, error) {
