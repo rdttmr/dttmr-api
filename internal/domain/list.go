@@ -18,12 +18,13 @@ var (
 
 type List struct {
 	ID             string    `json:"id"`
+	GroupID        string    `json:"group_id"`
 	Name           string    `json:"name"`
-	CreatedAt      time.Time `json:"created_at"`
-	ModifiedAt     time.Time `json:"modified_at"`
 	TotalItems     int       `json:"total_items"`
 	CompletedItems int       `json:"completed_items"`
 	Position       int       `json:"position"`
+	CreatedAt      time.Time `json:"created_at"`
+	ModifiedAt     time.Time `json:"modified_at"`
 }
 
 type ListItem struct {
@@ -36,7 +37,7 @@ type ListItem struct {
 }
 
 type ListRepository interface {
-	CreateList(ctx context.Context, name string) (*List, error)
+	CreateList(ctx context.Context, groupID string, name string) (*List, error)
 	DeleteList(ctx context.Context, listID string) error
 	SetListName(ctx context.Context, listID string, name string) error
 	GetLists(ctx context.Context, userID string) ([]List, error)
@@ -64,9 +65,12 @@ func NewListService(tx Transactor, r ListRepository) *ListService {
 	return &ListService{tx: tx, repo: r}
 }
 
-func (s *ListService) CreateList(ctx context.Context, authUserID string, name string) (*List, error) {
+func (s *ListService) CreateList(ctx context.Context, authUserID string, groupID string, name string) (*List, error) {
 	if authUserID == "" {
 		return nil, ErrUserIDMissing
+	}
+	if groupID == "" {
+		return nil, ErrGroupIDMissing
 	}
 	if name == "" {
 		return nil, ErrListNameMissing
@@ -74,7 +78,7 @@ func (s *ListService) CreateList(ctx context.Context, authUserID string, name st
 
 	var list *List
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		l, err := s.repo.CreateList(ctx, name)
+		l, err := s.repo.CreateList(ctx, groupID, name)
 		if err != nil {
 			return err
 		}

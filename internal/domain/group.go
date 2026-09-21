@@ -1,6 +1,14 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+var (
+	ErrGroupIDMissing = errors.New("group id is required")
+)
 
 type Group struct {
 	ID         string    `json:"id"`
@@ -15,4 +23,31 @@ type GroupInvite struct {
 	Code      string    `json:"code"`
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type GroupRepository interface {
+	CreateGroup(ctx context.Context, name string, createdBy string) (*Group, error)
+	DeleteGroup(ctx context.Context, id string) error
+	SetGroupName(ctx context.Context, id string, name string) error
+	GetGroups(ctx context.Context, userID string) ([]Group, error)
+	CreateGroupInvite(ctx context.Context, groupID string, codeHash string, expiresAt time.Time, createdBy string) (*GroupInvite, error)
+	DeleteGroupInvite(ctx context.Context, inviteID string) error
+	GetGroupInvite(ctx context.Context, codeHash string) (*GroupInvite, error)
+	ConsumeGroupInvite(ctx context.Context, id string, usedBy string) error
+	AddUserToGroup(ctx context.Context, groupID string, userID string) error
+	RemoveUserFromGroup(ctx context.Context, groupID string, userID string) error
+	IsUserInGroup(ctx context.Context, groupID string, userID string) (bool, error)
+	GetDefaultGroupID(ctx context.Context, userID string) (string, error)
+}
+
+type GroupService struct {
+	repo GroupRepository
+}
+
+func NewGroupService(r GroupRepository) *GroupService {
+	return &GroupService{repo: r}
+}
+
+func (s *GroupService) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
+	return s.repo.GetDefaultGroupID(ctx, userID)
 }

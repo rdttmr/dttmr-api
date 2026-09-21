@@ -24,6 +24,7 @@ func NewMux(cfg Config) http.Handler {
 	authService := domain.NewAuthService(store.Auth, []byte(cfg.JWTSecret))
 	inviteService := domain.NewInviteService(store.Invite)
 	userService := domain.NewUserService(store.User)
+	groupService := domain.NewGroupService(store.Group)
 	registrationService := domain.NewRegistrationService(store, userService, inviteService)
 	listService := domain.NewListService(store, store.List)
 	recipeService := domain.NewRecipeService(store, store.Recipe)
@@ -32,7 +33,7 @@ func NewMux(cfg Config) http.Handler {
 	authHandler := handler.NewAuthHandler(authService)
 	inviteHandler := handler.NewInviteHandler(inviteService)
 	userHandler := handler.NewUserHandler(userService, authService, registrationService)
-	listHandler := handler.NewListHandler(listService, userService)
+	listHandler := handler.NewListHandler(listService, userService, groupService)
 	recipeHandler := handler.NewRecipeHandler(recipeService)
 	exerciseHandler := handler.NewExerciseHandler(exerciseService)
 

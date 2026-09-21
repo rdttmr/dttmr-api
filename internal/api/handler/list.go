@@ -11,12 +11,13 @@ import (
 )
 
 type ListHandler struct {
-	ListService *domain.ListService
-	UserService *domain.UserService
+	ListService  *domain.ListService
+	UserService  *domain.UserService
+	GroupService *domain.GroupService
 }
 
-func NewListHandler(listService *domain.ListService, userService *domain.UserService) *ListHandler {
-	return &ListHandler{ListService: listService, UserService: userService}
+func NewListHandler(listService *domain.ListService, userService *domain.UserService, groupService *domain.GroupService) *ListHandler {
+	return &ListHandler{ListService: listService, UserService: userService, GroupService: groupService}
 }
 
 // CreateList handles the creation of a list
@@ -48,7 +49,16 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.Name)
+	if payload.GroupID == "" {
+		payload.GroupID, err = h.GroupService.GetDefaultGroupID(ctx, authContext.UserID)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to get default group id", slog.Any("error", err))
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
+			return
+		}
+	}
+
+	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.GroupID, payload.Name)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")

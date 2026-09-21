@@ -13,12 +13,12 @@ type ListRepo struct {
 	Repo
 }
 
-func (r *ListRepo) CreateList(ctx context.Context, name string) (*domain.List, error) {
-	list := &domain.List{Name: name}
+func (r *ListRepo) CreateList(ctx context.Context, groupID string, name string) (*domain.List, error) {
+	list := &domain.List{Name: name, GroupID: groupID}
 
 	err := r.conn(ctx).QueryRowContext(ctx,
-		"INSERT INTO lists (name) VALUES ($1) RETURNING id, created_at, modified_at",
-		name,
+		"INSERT INTO lists (name, group_id) VALUES ($1, $2) RETURNING id, created_at, modified_at",
+		name, groupID,
 	).Scan(&list.ID, &list.CreatedAt, &list.ModifiedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert list: %w", err)
@@ -48,7 +48,7 @@ func (r *ListRepo) SetListName(ctx context.Context, listID string, name string) 
 
 func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT l.id, l.name, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true), lu.position FROM lists AS l INNER JOIN list_users AS lu ON l.id=lu.list_id WHERE lu.user_id = $1 ORDER BY lu.position",
+		"SELECT l.id, l.name, l.group_id, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true), lp.position FROM lists AS l INNER JOIN list_positions AS lp ON l.id=lp.list_id WHERE l.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY lp.position",
 		userID,
 	)
 	if err != nil {
@@ -62,7 +62,7 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 	lists := make([]domain.List, 0, 16)
 	for rows.Next() {
 		var l domain.List
-		err = rows.Scan(&l.ID, &l.Name, &l.CreatedAt, &l.ModifiedAt, &l.TotalItems, &l.CompletedItems, &l.Position)
+		err = rows.Scan(&l.ID, &l.Name, &l.GroupID, &l.CreatedAt, &l.ModifiedAt, &l.TotalItems, &l.CompletedItems, &l.Position)
 		if err != nil {
 			return nil, err
 		}

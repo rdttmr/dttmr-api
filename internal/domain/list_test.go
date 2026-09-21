@@ -39,8 +39,8 @@ type mockListRepository struct {
 	mock.Mock
 }
 
-func (m *mockListRepository) CreateList(ctx context.Context, name string) (*List, error) {
-	args := m.Called(ctx, name)
+func (m *mockListRepository) CreateList(ctx context.Context, groupID string, name string) (*List, error) {
+	args := m.Called(ctx, groupID, name)
 	list, _ := args.Get(0).(*List)
 	return list, args.Error(1)
 }
@@ -158,11 +158,11 @@ func TestListService_CreateList(t *testing.T) {
 	t.Run("creates the list and adds the creator in one transaction", func(t *testing.T) {
 		svc, repo, tx := newListService(t)
 
-		created := &List{ID: "list-1", Name: "Groceries", CreatedAt: time.Now()}
-		repo.On("CreateList", inTx, "Groceries").Return(created, nil)
+		created := &List{ID: "list-1", GroupID: "group-1", Name: "Groceries", CreatedAt: time.Now()}
+		repo.On("CreateList", inTx, "group-1", "Groceries").Return(created, nil)
 		repo.On("AddUserToList", inTx, "list-1", "user-1").Return(nil)
 
-		list, err := svc.CreateList(ctx, "user-1", "Groceries")
+		list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
 
 		require.NoError(t, err)
 		assert.Equal(t, created, list)
@@ -174,9 +174,9 @@ func TestListService_CreateList(t *testing.T) {
 		svc, repo, _ := newListService(t)
 
 		repoErr := errors.New("insert failed")
-		repo.On("CreateList", inTx, "Groceries").Return(nil, repoErr)
+		repo.On("CreateList", inTx, "group-1", "Groceries").Return(nil, repoErr)
 
-		list, err := svc.CreateList(ctx, "user-1", "Groceries")
+		list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
 
 		assert.Nil(t, list)
 		assert.ErrorIs(t, err, repoErr)
@@ -187,10 +187,10 @@ func TestListService_CreateList(t *testing.T) {
 		svc, repo, _ := newListService(t)
 
 		repoErr := errors.New("foreign key violation")
-		repo.On("CreateList", inTx, "Groceries").Return(&List{ID: "list-1", Name: "Groceries"}, nil)
+		repo.On("CreateList", inTx, "group-1", "Groceries").Return(&List{ID: "list-1", Name: "Groceries"}, nil)
 		repo.On("AddUserToList", inTx, "list-1", "user-1").Return(repoErr)
 
-		list, err := svc.CreateList(ctx, "user-1", "Groceries")
+		list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
 
 		assert.Nil(t, list, "no half-created list may be returned")
 		assert.ErrorIs(t, err, repoErr)
@@ -201,7 +201,7 @@ func TestListService_CreateList(t *testing.T) {
 
 		tx.err = errors.New("could not begin transaction")
 
-		list, err := svc.CreateList(ctx, "user-1", "Groceries")
+		list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
 
 		assert.Nil(t, list)
 		assert.ErrorIs(t, err, tx.err)
@@ -722,15 +722,23 @@ func TestListService_ValidationErrors(t *testing.T) {
 		{
 			name: "CreateList without auth user id",
 			call: func(svc *ListService) error {
-				_, err := svc.CreateList(ctx, "", "name-1")
+				_, err := svc.CreateList(ctx, "", "group-1", "name-1")
 				return err
 			},
 			wantErr: ErrUserIDMissing,
 		},
 		{
+			name: "CreateList without group id",
+			call: func(svc *ListService) error {
+				_, err := svc.CreateList(ctx, "user-1", "", "name-1")
+				return err
+			},
+			wantErr: ErrGroupIDMissing,
+		},
+		{
 			name: "CreateList without name",
 			call: func(svc *ListService) error {
-				_, err := svc.CreateList(ctx, "user-1", "")
+				_, err := svc.CreateList(ctx, "user-1", "group-1", "")
 				return err
 			},
 			wantErr: ErrListNameMissing,

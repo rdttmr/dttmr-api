@@ -1,7 +1,8 @@
 package request
 
 type CreateListPayload struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	GroupID string `json:"group_id"`
 }
 
 type SetListNamePayload struct {

@@ -155,3 +155,17 @@ func (r *GroupRepo) IsUserInGroup(ctx context.Context, groupID string, userID st
 
 	return cnt > 0, nil
 }
+
+func (r *GroupRepo) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
+	var id string
+
+	err := r.conn(ctx).QueryRowContext(ctx,
+		"SELECT group_id FROM group_members WHERE user_id = $1 AND is_default = TRUE",
+		userID,
+	).Scan(&id)
+	if err != nil {
+		return "", fmt.Errorf("failed to get default group id: %w", err)
+	}
+
+	return id, nil
+}
