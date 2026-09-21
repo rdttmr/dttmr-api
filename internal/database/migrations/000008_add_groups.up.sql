@@ -19,6 +19,7 @@ CREATE TABLE group_members (
 );
 
 CREATE INDEX idx_group_members_user_id ON group_members(user_id);
+CREATE UNIQUE INDEX idx_group_members_one_default_per_user ON group_members (user_id) WHERE is_default;
 
 CREATE TABLE group_invites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
