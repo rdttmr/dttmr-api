@@ -72,7 +72,7 @@ func (r *GroupRepo) GetGroups(ctx context.Context, userID string) ([]domain.Grou
 	return groups, nil
 }
 
-// CreateGroupInvite does *not* return the invite code
+// CreateGroupInvite does *not* return the invite code in the domain.GroupInvite object
 func (r *GroupRepo) CreateGroupInvite(ctx context.Context, groupID string, codeHash string, expiresAt time.Time, createdBy string) (*domain.GroupInvite, error) {
 	var invite domain.GroupInvite
 	err := r.conn(ctx).QueryRowContext(ctx,
@@ -86,6 +86,14 @@ func (r *GroupRepo) CreateGroupInvite(ctx context.Context, groupID string, codeH
 	invite.GroupID = groupID
 	invite.ExpiresAt = expiresAt
 	return &invite, nil
+}
+
+func (r *GroupRepo) DeleteGroupInvite(ctx context.Context, inviteID string) error {
+	_, err := r.conn(ctx).ExecContext(ctx, "DELETE FROM group_invites WHERE id = $1", inviteID)
+	if err != nil {
+		return fmt.Errorf("failed to delete group invite: %w", err)
+	}
+	return nil
 }
 
 func (r *GroupRepo) GetGroupInvite(ctx context.Context, codeHash string) (*domain.GroupInvite, error) {
