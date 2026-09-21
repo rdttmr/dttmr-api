@@ -48,7 +48,7 @@ func (r *RecipeRepo) SetRecipeName(ctx context.Context, recipeID string, name st
 
 func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Recipe, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT r.id, r.name, r.created_at, r.modified_at, ru.position FROM recipes AS r INNER JOIN recipe_users AS ru ON r.id=ru.recipe_id WHERE ru.user_id = $1 ORDER BY ru.position",
+		"SELECT r.id, r.name, r.created_at, r.modified_at, ru.position, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id) AS total_items FROM recipes AS r INNER JOIN recipe_users AS ru ON r.id=ru.recipe_id WHERE ru.user_id = $1 ORDER BY ru.position",
 		userID,
 	)
 	if err != nil {
@@ -59,7 +59,7 @@ func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Re
 	recipes := make([]domain.Recipe, 0, 16)
 	for rows.Next() {
 		var r domain.Recipe
-		err = rows.Scan(&r.ID, &r.Name, &r.CreatedAt, &r.ModifiedAt, &r.Position)
+		err = rows.Scan(&r.ID, &r.Name, &r.CreatedAt, &r.ModifiedAt, &r.Position, &r.TotalItems)
 		if err != nil {
 			return nil, err
 		}

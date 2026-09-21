@@ -19,6 +19,7 @@ type Recipe struct {
 	Name       string    `json:"name"`
 	CreatedAt  time.Time `json:"created_at"`
 	ModifiedAt time.Time `json:"modified_at"`
+	TotalItems int       `json:"total_items"`
 	Position   int       `json:"position"`
 }
 
