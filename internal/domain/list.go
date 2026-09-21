@@ -109,7 +109,7 @@ func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID 
 	return s.repo.DeleteList(ctx, listID)
 }
 
-func (s *ListService) SetListName(ctx context.Context, authUserID, listID string, name string) error {
+func (s *ListService) SetListName(ctx context.Context, authUserID string, listID string, name string) error {
 	if authUserID == "" {
 		return ErrUserIDMissing
 	}

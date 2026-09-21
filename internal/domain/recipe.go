@@ -81,7 +81,7 @@ func (s *RecipeService) CreateRecipe(ctx context.Context, authUserID string, nam
 	return recipe, nil
 }
 
-func (s *RecipeService) DeleteRecipe(ctx context.Context, authUserID, recipeID string) error {
+func (s *RecipeService) DeleteRecipe(ctx context.Context, authUserID string, recipeID string) error {
 	if authUserID == "" {
 		return ErrUserIDMissing
 	}
@@ -96,7 +96,7 @@ func (s *RecipeService) DeleteRecipe(ctx context.Context, authUserID, recipeID s
 	return s.repo.DeleteRecipe(ctx, recipeID)
 }
 
-func (s *RecipeService) SetRecipeName(ctx context.Context, authUserID, recipeID string, name string) error {
+func (s *RecipeService) SetRecipeName(ctx context.Context, authUserID string, recipeID string, name string) error {
 	if authUserID == "" {
 		return ErrUserIDMissing
 	}
