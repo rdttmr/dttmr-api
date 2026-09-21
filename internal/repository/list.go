@@ -36,7 +36,7 @@ func (r *ListRepo) DeleteList(ctx context.Context, listID string) error {
 }
 
 func (r *ListRepo) SetListName(ctx context.Context, listID string, name string) error {
-	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE lists SET name = $1 WHERE id = $1", name, listID)
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE lists SET name = $2 WHERE id = $1", listID, name)
 	if err != nil {
 		return fmt.Errorf("failed to update list: %w", err)
 	}
