@@ -64,6 +64,7 @@ func NewMux(cfg Config) http.Handler {
 	// Lists
 	apiMux.Handle("POST /lists", protected(listHandler.CreateList))
 	apiMux.Handle("DELETE /lists/{id}", protected(listHandler.DeleteList))
+	apiMux.Handle("POST /lists/{id}/name", protected(listHandler.SetListName))
 	apiMux.Handle("GET /lists", protected(listHandler.GetLists))
 	apiMux.Handle("POST /lists/user", protected(listHandler.AddUserToList))
 	apiMux.Handle("DELETE /lists/user", protected(listHandler.RemoveUserFromList))

@@ -99,6 +99,56 @@ func (h *ListHandler) DeleteList(w http.ResponseWriter, r *http.Request) {
 	response.Status(w, http.StatusNoContent)
 }
 
+// SetListName handles updating "name" of a list item
+//
+// @Summary Updates "name" of list
+// @Description Update an existing list, setting the "name" field
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param id path int true "List ID"
+// @Param payload body request.SetListNamePayload true "Update list name payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to set list name"
+// @Router /lists/{id}/name [post]
+func (h *ListHandler) SetListName(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listID := r.PathValue("id")
+	if listID == "" {
+		slog.ErrorContext(ctx, "failed to read list id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	payload, err := request.DecodeJSON[request.SetListNamePayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode set list name payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.ListService.SetListName(ctx, authContext.UserID, listID, payload.Name)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set list name", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to set list name")
+		return
+	}
+
+	slog.InfoContext(ctx, "update list name successful", slog.String("list_id", listID))
+	response.Status(w, http.StatusNoContent)
+}
+
 // GetLists handles fetching lists for the current user
 //
 // @Summary Returns all lists of the user
