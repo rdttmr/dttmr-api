@@ -49,11 +49,34 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: This probably should be a helper function, because this behavior will be required in many endpoints
 	if payload.GroupID == "" {
 		payload.GroupID, err = h.GroupService.GetDefaultGroupID(ctx, authContext.UserID)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to get default group id", slog.Any("error", err))
 			response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
+			return
+		}
+	} else {
+		role, err := h.GroupService.GetRoleForGroup(ctx, authContext.UserID, payload.GroupID)
+		if err != nil {
+			if errors.Is(err, domain.ErrUserNotInGroup) {
+				slog.ErrorContext(ctx, "user tried to create list in group without being in the group",
+					slog.String("user_id", authContext.UserID),
+					slog.String("group_id", payload.GroupID))
+				response.Error(ctx, w, http.StatusForbidden, "not in group")
+			} else {
+				slog.ErrorContext(ctx, "failed to get users role", slog.Any("error", err))
+				response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
+			}
+			return
+		}
+		if role != "owner" && role != "member" {
+			slog.ErrorContext(ctx, "user has insufficient permission to create list",
+				slog.String("user_id", authContext.UserID),
+				slog.String("group_id", payload.GroupID),
+				slog.String("role", role))
+			response.Error(ctx, w, http.StatusForbidden, "insufficient permission")
 			return
 		}
 	}

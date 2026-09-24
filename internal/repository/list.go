@@ -48,7 +48,7 @@ func (r *ListRepo) SetListName(ctx context.Context, listID string, name string) 
 
 func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT l.id, l.name, l.group_id, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true), lp.position FROM lists AS l INNER JOIN list_positions AS lp ON l.id=lp.list_id WHERE l.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY lp.position",
+		"SELECT l.id, l.name, l.group_id, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true), COALESCE(lp.position, 0) FROM lists AS l LEFT JOIN list_positions AS lp ON l.id=lp.list_id AND lp.user_id = $1 WHERE l.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY lp.position, l.modified_at",
 		userID,
 	)
 	if err != nil {

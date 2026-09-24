@@ -8,7 +8,8 @@ import (
 
 var (
 	ErrGroupIDMissing = errors.New("group id is required")
-	ErrNotOwner       = errors.New("user is not owner")
+	ErrUserNotInGroup = errors.New("user is not in group")
+	ErrUserNotOwner   = errors.New("user is not owner")
 )
 
 type Group struct {
@@ -40,6 +41,7 @@ type GroupRepository interface {
 	IsUserInGroup(ctx context.Context, groupID string, userID string) (bool, error)
 	GetRoleForGroup(ctx context.Context, groupID string, userID string) (string, error)
 	GetDefaultGroupID(ctx context.Context, userID string) (string, error)
+	SetDefaultGroupID(ctx context.Context, userID string, groupID string) error
 }
 
 type GroupService struct {
@@ -48,10 +50,6 @@ type GroupService struct {
 
 func NewGroupService(r GroupRepository) *GroupService {
 	return &GroupService{repo: r}
-}
-
-func (s *GroupService) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
-	return s.repo.GetDefaultGroupID(ctx, userID)
 }
 
 func (s *GroupService) CreateGroup(ctx context.Context, authUserID string, name string) (*Group, error) {
@@ -80,13 +78,28 @@ func (s *GroupService) DeleteGroup(ctx context.Context, authUserID string, group
 	return s.repo.DeleteGroup(ctx, groupID)
 }
 
+func (s *GroupService) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
+	return s.repo.GetDefaultGroupID(ctx, userID)
+}
+
+func (s *GroupService) GetRoleForGroup(ctx context.Context, groupID string, userID string) (string, error) {
+	if groupID == "" {
+		return "", ErrGroupIDMissing
+	}
+	if userID == "" {
+		return "", ErrUserIDMissing
+	}
+
+	return s.repo.GetRoleForGroup(ctx, groupID, userID)
+}
+
 func (s *GroupService) UserIsOwner(ctx context.Context, userID string, groupID string) error {
 	role, err := s.repo.GetRoleForGroup(ctx, groupID, userID)
 	if err != nil {
 		return err
 	}
 	if role != "owner" {
-		return ErrNotOwner
+		return ErrUserNotOwner
 	}
 	return nil
 }

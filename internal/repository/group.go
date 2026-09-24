@@ -163,6 +163,9 @@ func (r *GroupRepo) GetRoleForGroup(ctx context.Context, groupID string, userID 
 		groupID, userID,
 	).Scan(&role)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", domain.ErrUserNotInGroup
+		}
 		return "", fmt.Errorf("failed to get users role: %w", err)
 	}
 
@@ -181,4 +184,25 @@ func (r *GroupRepo) GetDefaultGroupID(ctx context.Context, userID string) (strin
 	}
 
 	return id, nil
+}
+
+// SetDefaultGroupID should always run within a transaction
+func (r *GroupRepo) SetDefaultGroupID(ctx context.Context, userID string, groupID string) error {
+	_, err := r.conn(ctx).ExecContext(ctx,
+		"UPDATE group_members SET is_default = FALSE WHERE user_id = $1",
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to reset current default group_id: %w", err)
+	}
+
+	_, err = r.conn(ctx).ExecContext(ctx,
+		"UPDATE group_members SET is_default = TRUE WHERE user_id = $1 AND group_id = $2",
+		userID, groupID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to set default group_id: %w", err)
+	}
+
+	return nil
 }
