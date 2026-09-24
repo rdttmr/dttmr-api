@@ -156,6 +156,19 @@ func (r *GroupRepo) IsUserInGroup(ctx context.Context, groupID string, userID st
 	return cnt > 0, nil
 }
 
+func (r *GroupRepo) GetRoleForGroup(ctx context.Context, groupID string, userID string) (string, error) {
+	var role string
+	err := r.conn(ctx).QueryRowContext(ctx,
+		"SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2",
+		groupID, userID,
+	).Scan(&role)
+	if err != nil {
+		return "", fmt.Errorf("failed to get users role: %w", err)
+	}
+
+	return role, nil
+}
+
 func (r *GroupRepo) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
 	var id string
 
