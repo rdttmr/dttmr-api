@@ -274,7 +274,7 @@ func (h *GroupHandler) ShareGroup(w http.ResponseWriter, r *http.Request) {
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 500 {object} response.ErrorResponse "failed to join group"
-// @Router /groups/join/{code} [post]
+// @Router /groups/join [post]
 func (h *GroupHandler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
