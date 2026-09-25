@@ -13,12 +13,12 @@ type RecipeRepo struct {
 	Repo
 }
 
-func (r *RecipeRepo) CreateRecipe(ctx context.Context, name string) (*domain.Recipe, error) {
-	recipe := &domain.Recipe{Name: name}
+func (r *RecipeRepo) CreateRecipe(ctx context.Context, groupID string, name string) (*domain.Recipe, error) {
+	recipe := &domain.Recipe{Name: name, GroupID: groupID}
 
 	err := r.conn(ctx).QueryRowContext(ctx,
-		"INSERT INTO recipes (name) VALUES ($1) RETURNING id, created_at, modified_at",
-		name,
+		"INSERT INTO recipes (name, group_id) VALUES ($1, $2) RETURNING id, created_at, modified_at",
+		name, groupID,
 	).Scan(&recipe.ID, &recipe.CreatedAt, &recipe.ModifiedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create recipe: %w", err)

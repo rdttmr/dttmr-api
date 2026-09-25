@@ -27,7 +27,7 @@ func NewMux(cfg Config) http.Handler {
 	groupService := domain.NewGroupService(store, store.Group)
 	registrationService := domain.NewRegistrationService(store, userService, groupService, inviteService)
 	listService := domain.NewListService(store, store.List, groupService)
-	recipeService := domain.NewRecipeService(store, store.Recipe)
+	recipeService := domain.NewRecipeService(store, store.Recipe, groupService)
 	exerciseService := domain.NewExerciseService(store.Exercise)
 
 	authHandler := handler.NewAuthHandler(authService)
@@ -80,8 +80,6 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("DELETE /recipes/{id}", protected(recipeHandler.DeleteRecipe))
 	apiMux.Handle("POST /recipes/{id}/name", protected(recipeHandler.SetRecipeName))
 	apiMux.Handle("GET /recipes", protected(recipeHandler.GetRecipes))
-	apiMux.Handle("POST /recipes/{id}/share", protected(recipeHandler.ShareRecipe))
-	apiMux.Handle("POST /recipes/{code}/join", protected(recipeHandler.JoinSharedRecipe))
 	apiMux.Handle("POST /recipes/order", protected(recipeHandler.OrderRecipes))
 	apiMux.Handle("POST /recipes/items", protected(recipeHandler.AddListItemToRecipe))
 	apiMux.Handle("DELETE /recipes/items", protected(recipeHandler.RemoveListItemFromRecipe))
