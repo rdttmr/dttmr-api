@@ -280,7 +280,7 @@ func (s *GroupService) SetDefaultGroupID(ctx context.Context, userID string, gro
 }
 
 func (s *GroupService) UserInGroup(ctx context.Context, userID string, groupID string) error {
-	inGroup, err := s.repo.IsUserInGroup(ctx, userID, groupID)
+	inGroup, err := s.repo.IsUserInGroup(ctx, groupID, userID)
 	if err != nil {
 		return err
 	}
