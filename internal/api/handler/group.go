@@ -190,7 +190,7 @@ func (h *GroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
 // @Accept json
 // @Produce json
 // @Param id path string true "Group ID"
-// @Success 200 {object} []domain.User
+// @Success 200 {object} []domain.GroupMember
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to read group members"
