@@ -87,11 +87,24 @@ func (r *GroupRepo) CreateGroupInvite(ctx context.Context, groupID string, codeH
 	return &invite, nil
 }
 
-func (r *GroupRepo) DeleteGroupInvite(ctx context.Context, inviteID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx, "DELETE FROM group_invites WHERE id = $1", inviteID)
+func (r *GroupRepo) DeleteGroupInvite(ctx context.Context, inviteID string, createdBy string) error {
+	res, err := r.conn(ctx).ExecContext(ctx,
+		"DELETE FROM group_invites WHERE id = $1 AND created_by = $2 AND consumed_at IS NULL",
+		inviteID, createdBy,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to delete group invite: %w", err)
 	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected: %w", err)
+	}
+	if affected < 1 {
+		// It's more of an assumption,
+		// but unless I encounter this being wrong, I'll keep it.
+		return domain.ErrInviteConsumed
+	}
+
 	return nil
 }
 
@@ -102,16 +115,19 @@ func (r *GroupRepo) GetGroupInvite(ctx context.Context, codeHash string) (*domai
 		codeHash,
 	).Scan(&invite.ID, &invite.GroupID, &invite.CreatedAt, &invite.ExpiresAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrInviteInvalid
+		}
 		return nil, fmt.Errorf("failed to get group invite: %w", err)
 	}
 
 	return &invite, nil
 }
 
-func (r *GroupRepo) ConsumeGroupInvite(ctx context.Context, id string, usedBy string) error {
+func (r *GroupRepo) ConsumeGroupInvite(ctx context.Context, inviteID string, usedBy string) error {
 	res, err := r.conn(ctx).ExecContext(ctx,
-		"UPDATE group_invites SET used_by = $1, consumed_at = NOW() WHERE id=$2 AND expires_at > NOW() AND consumed_at IS NULL",
-		usedBy, id,
+		"UPDATE group_invites SET used_by = $1, consumed_at = NOW() WHERE id = $2 AND expires_at > NOW() AND consumed_at IS NULL",
+		usedBy, inviteID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to consume group invite: %w", err)
@@ -127,10 +143,10 @@ func (r *GroupRepo) ConsumeGroupInvite(ctx context.Context, id string, usedBy st
 	return nil
 }
 
-func (r *GroupRepo) AddUserToGroup(ctx context.Context, groupID string, userID string) error {
+func (r *GroupRepo) AddUserToGroup(ctx context.Context, groupID string, userID string, role string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO group_members (group_id, user_id) VALUES ($1, $2)",
-		groupID, userID,
+		"INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, $3)",
+		groupID, userID, role,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to add user to group: %w", err)
@@ -147,6 +163,33 @@ func (r *GroupRepo) RemoveUserFromGroup(ctx context.Context, groupID string, use
 		return fmt.Errorf("failed to remove user from group: %w", err)
 	}
 	return nil
+}
+
+func (r *GroupRepo) GetGroupMembers(ctx context.Context, groupID string) ([]domain.User, error) {
+	rows, err := r.conn(ctx).QueryContext(ctx,
+		"SELECT u.id, u.email, u.name FROM group_members gm INNER JOIN users u ON gm.user_id=u.id WHERE gm.group_id = $1",
+		groupID,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get group members: %w", err)
+	}
+	defer rows.Close()
+
+	members := make([]domain.User, 0, 8)
+	for rows.Next() {
+		var u domain.User
+		err = rows.Scan(&u.ID, &u.Email, &u.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		members = append(members, u)
+	}
+
+	return members, nil
 }
 
 func (r *GroupRepo) IsUserInGroup(ctx context.Context, groupID string, userID string) (bool, error) {

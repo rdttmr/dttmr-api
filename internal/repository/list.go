@@ -35,6 +35,14 @@ func (r *ListRepo) DeleteList(ctx context.Context, listID string) error {
 	return nil
 }
 
+func (r *ListRepo) SetListGroup(ctx context.Context, listID string, groupID string) error {
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE lists SET group_id = $1 WHERE id = $2", groupID, listID)
+	if err != nil {
+		return fmt.Errorf("failed to update list: %w", err)
+	}
+	return nil
+}
+
 func (r *ListRepo) SetListName(ctx context.Context, listID string, name string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
 		"UPDATE lists SET name = $1, modified_at = NOW() WHERE id = $2",

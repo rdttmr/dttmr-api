@@ -85,16 +85,18 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.ValidateGroupWritePermission(ctx, w, "create list", &payload.GroupID, authContext.UserID)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to validate group permissions")
-		return
-	}
-
 	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.GroupID, payload.Name)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
+		if errors.Is(err, domain.ErrUserNoWritePermissions) {
+			slog.WarnContext(ctx, "user has no write permission",
+				slog.Any("error", err),
+				slog.String("user_id", authContext.UserID),
+				slog.String("group_id", payload.GroupID))
+			response.Error(ctx, w, http.StatusForbidden, "user has no write permission")
+		} else {
+			slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
+		}
 		return
 	}
 

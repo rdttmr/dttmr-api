@@ -39,6 +39,7 @@ type ListItem struct {
 type ListRepository interface {
 	CreateList(ctx context.Context, groupID string, name string) (*List, error)
 	DeleteList(ctx context.Context, listID string) error
+	SetListGroup(ctx context.Context, listID string, groupID string) error
 	SetListName(ctx context.Context, listID string, name string) error
 	GetLists(ctx context.Context, userID string) ([]List, error)
 	OrderLists(ctx context.Context, userID string, listIDs []string) error
@@ -54,23 +55,35 @@ type ListRepository interface {
 }
 
 type ListService struct {
-	tx   Transactor
-	repo ListRepository
+	tx           Transactor
+	repo         ListRepository
+	GroupService *GroupService
 }
 
-func NewListService(tx Transactor, r ListRepository) *ListService {
-	return &ListService{tx: tx, repo: r}
+func NewListService(tx Transactor, r ListRepository, groupService *GroupService) *ListService {
+	return &ListService{tx: tx, repo: r, GroupService: groupService}
 }
 
 func (s *ListService) CreateList(ctx context.Context, authUserID string, groupID string, name string) (*List, error) {
 	if authUserID == "" {
 		return nil, ErrUserIDMissing
 	}
-	if groupID == "" {
-		return nil, ErrGroupIDMissing
-	}
 	if name == "" {
 		return nil, ErrListNameMissing
+	}
+	if groupID == "" {
+		var err error
+		groupID, err = s.GroupService.GetDefaultGroupID(ctx, authUserID)
+		if err != nil {
+			return nil, err
+		}
+		if groupID == "" {
+			return nil, ErrGroupIDMissing
+		}
+	}
+
+	if err := s.GroupService.UserHasWritePermission(ctx, authUserID, groupID); err != nil {
+		return nil, err
 	}
 
 	list, err := s.repo.CreateList(ctx, groupID, name)
@@ -94,6 +107,27 @@ func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID 
 	}
 
 	return s.repo.DeleteList(ctx, listID)
+}
+
+func (s *ListService) SetListGroup(ctx context.Context, authUserID string, listID string, groupID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if listID == "" {
+		return ErrListIDMissing
+	}
+	if groupID == "" {
+		return ErrGroupIDMissing
+	}
+
+	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
+		return err
+	}
+	if err := s.GroupService.UserHasWritePermission(ctx, authUserID, groupID); err != nil {
+		return err
+	}
+
+	return s.repo.SetListGroup(ctx, listID, groupID)
 }
 
 func (s *ListService) SetListName(ctx context.Context, authUserID string, listID string, name string) error {
