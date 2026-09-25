@@ -98,6 +98,56 @@ func (h *RecipeHandler) DeleteRecipe(w http.ResponseWriter, r *http.Request) {
 	response.Status(w, http.StatusNoContent)
 }
 
+// SetRecipeGroup handles updating the group of a recipe
+//
+// @Summary Updates group of recipe
+// @Description Update an existing recipe, moving it to a different group
+// @Tags Recipe
+// @Accept json
+// @Produce json
+// @Param id path string true "Recipe ID"
+// @Param payload body request.SetRecipeGroupPayload true "Update recipe group payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to set recipe group"
+// @Router /recipes/{id}/group [post]
+func (h *RecipeHandler) SetRecipeGroup(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	recipeID := r.PathValue("id")
+	if recipeID == "" {
+		slog.ErrorContext(ctx, "failed to read recipe id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	payload, err := request.DecodeJSON[request.SetListGroupPayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode set list group payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.RecipeService.SetRecipeGroup(ctx, authContext.UserID, recipeID, payload.GroupID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set recipe group", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to set recipe group")
+		return
+	}
+
+	slog.InfoContext(ctx, "updated recipe group successfully", slog.String("recipe_id", recipeID))
+	response.Status(w, http.StatusNoContent)
+}
+
 // SetRecipeName handles updating "name" of a recipe
 //
 // @Summary Updates "name" of recipe

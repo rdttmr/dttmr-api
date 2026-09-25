@@ -5,6 +5,10 @@ type CreateRecipePayload struct {
 	GroupID string `json:"group_id"`
 }
 
+type SetRecipeGroupPayload struct {
+	GroupID string `json:"group_id"`
+}
+
 type SetRecipeNamePayload struct {
 	Name string `json:"name"`
 }

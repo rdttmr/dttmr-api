@@ -112,6 +112,56 @@ func (h *ListHandler) DeleteList(w http.ResponseWriter, r *http.Request) {
 	response.Status(w, http.StatusNoContent)
 }
 
+// SetListGroup handles updating the group of a list
+//
+// @Summary Updates group of list
+// @Description Update an existing list, moving it to a different group
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param id path string true "List ID"
+// @Param payload body request.SetListGroupPayload true "Update list group payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to set list group"
+// @Router /lists/{id}/group [post]
+func (h *ListHandler) SetListGroup(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listID := r.PathValue("id")
+	if listID == "" {
+		slog.ErrorContext(ctx, "failed to read list id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	payload, err := request.DecodeJSON[request.SetListGroupPayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode set list group payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.ListService.SetListGroup(ctx, authContext.UserID, listID, payload.GroupID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set list group", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to set list group")
+		return
+	}
+
+	slog.InfoContext(ctx, "updated list group successfully", slog.String("list_id", listID))
+	response.Status(w, http.StatusNoContent)
+}
+
 // SetListName handles updating "name" of a list
 //
 // @Summary Updates "name" of list

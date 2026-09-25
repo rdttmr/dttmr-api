@@ -5,6 +5,10 @@ type CreateListPayload struct {
 	GroupID string `json:"group_id"`
 }
 
+type SetListGroupPayload struct {
+	GroupID string `json:"group_id"`
+}
+
 type SetListNamePayload struct {
 	Name string `json:"name"`
 }
