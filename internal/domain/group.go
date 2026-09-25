@@ -26,6 +26,7 @@ type Group struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
 	IsDefault   bool      `json:"is_default"`
+	Role        string    `json:"role"`
 	MemberCount int64     `json:"member_count"`
 	CreatedAt   time.Time `json:"created_at"`
 	ModifiedAt  time.Time `json:"modified_at"`
@@ -39,6 +40,14 @@ type GroupInvite struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
+type GroupMember struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type GroupRepository interface {
 	CreateGroup(ctx context.Context, name string, createdBy string) (*Group, error)
 	DeleteGroup(ctx context.Context, id string) error
@@ -50,7 +59,7 @@ type GroupRepository interface {
 	ConsumeGroupInvite(ctx context.Context, inviteID string, usedBy string) error
 	AddUserToGroup(ctx context.Context, groupID string, userID string, role string) error
 	RemoveUserFromGroup(ctx context.Context, groupID string, userID string) error
-	GetGroupMembers(ctx context.Context, groupID string) ([]User, error)
+	GetGroupMembers(ctx context.Context, groupID string) ([]GroupMember, error)
 	IsUserInGroup(ctx context.Context, groupID string, userID string) (bool, error)
 	GetRoleForGroup(ctx context.Context, groupID string, userID string) (string, error)
 	GetDefaultGroupID(ctx context.Context, userID string) (string, error)
@@ -220,6 +229,21 @@ func (s *GroupService) JoinGroup(ctx context.Context, authUserID, joinCode strin
 	return invite.GroupID, nil
 }
 
+func (s *GroupService) LeaveGroup(ctx context.Context, authUserID string, groupID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if groupID == "" {
+		return ErrGroupIDMissing
+	}
+
+	if err := s.UserInGroup(ctx, authUserID, groupID); err != nil {
+		return err
+	}
+
+	return s.repo.RemoveUserFromGroup(ctx, groupID, authUserID)
+}
+
 func (s *GroupService) AddUserToGroup(ctx context.Context, groupID string, userID string, role string) error {
 	if groupID == "" {
 		return ErrGroupIDMissing
@@ -245,7 +269,7 @@ func (s *GroupService) RemoveUserFromGroup(ctx context.Context, groupID string, 
 	return s.repo.RemoveUserFromGroup(ctx, groupID, userID)
 }
 
-func (s *GroupService) GetGroupMembers(ctx context.Context, authUserID string, groupID string) ([]User, error) {
+func (s *GroupService) GetGroupMembers(ctx context.Context, authUserID string, groupID string) ([]GroupMember, error) {
 	if authUserID == "" {
 		return nil, ErrUserIDMissing
 	}

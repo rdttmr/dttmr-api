@@ -190,7 +190,7 @@ func (h *GroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
 // @Accept json
 // @Produce json
 // @Param id path string true "Group ID"
-// @Success 200 {object} []domain.User
+// @Success 200 {object} []domain.GroupMember
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 401 {object} response.ErrorResponse "not authorized"
 // @Error 500 {object} response.ErrorResponse "failed to read group members"
@@ -306,8 +306,46 @@ func (h *GroupHandler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 	response.Status(w, http.StatusNoContent)
 }
 
+// LeaveGroup handles a user leaving a group
+//
+// @Summary Leave group route
+// @Description Leave a group, user will no longer be part of the group.
+// @Tags Group
+// @Accept json
+// @Produce json
+// @Param id path string true "Group ID"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 500 {object} response.ErrorResponse "failed to leave group"
+// @Router /groups/{id}/leave [post]
 func (h *GroupHandler) LeaveGroup(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 
+	groupID := r.PathValue("id")
+	if groupID == "" {
+		slog.ErrorContext(ctx, "failed to read group id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to leave group")
+		return
+	}
+
+	err = h.GroupService.LeaveGroup(ctx, authContext.UserID, groupID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to leave group", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to leave group")
+		return
+	}
+
+	slog.InfoContext(ctx, "left group successfully",
+		slog.String("group_id", groupID),
+		slog.String("user_id", authContext.UserID))
+	response.Status(w, http.StatusNoContent)
 }
 
 // SetDefaultGroup handles setting a group your default

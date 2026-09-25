@@ -178,9 +178,9 @@ func (m *mockGroupRepository) RemoveUserFromGroup(ctx context.Context, groupID s
 	return args.Error(0)
 }
 
-func (m *mockGroupRepository) GetGroupMembers(ctx context.Context, groupID string) ([]User, error) {
+func (m *mockGroupRepository) GetGroupMembers(ctx context.Context, groupID string) ([]GroupMember, error) {
 	args := m.Called(ctx, groupID)
-	members, _ := args.Get(0).([]User)
+	members, _ := args.Get(0).([]GroupMember)
 	return members, args.Error(1)
 }
 
