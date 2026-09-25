@@ -254,11 +254,22 @@ func (h *RecipeHandler) AddListItemToRecipe(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// TODO: Check all users of this recipe, if they are allowed to access the given list item
 	err = h.RecipeService.AddListItemToRecipe(ctx, authContext.UserID, payload.RecipeID, payload.ListItemID)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to add list item to recipe", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to add list item to recipe")
+		if errors.Is(err, domain.ErrUserNotInRecipe) {
+			slog.ErrorContext(ctx, "user not in recipe",
+				slog.String("user_id", authContext.UserID),
+				slog.String("recipe_id", payload.RecipeID))
+			response.Error(ctx, w, http.StatusForbidden, "insufficient permission")
+		} else if errors.Is(err, domain.ErrListItemNotInGroup) {
+			slog.ErrorContext(ctx, "list item not in group",
+				slog.String("recipe_id", payload.RecipeID),
+				slog.String("list_item_id", payload.ListItemID))
+			response.Error(ctx, w, http.StatusNotFound, "list item not found")
+		} else {
+			slog.ErrorContext(ctx, "failed to add list item to recipe", slog.Any("error", err))
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to add list item to recipe")
+		}
 		return
 	}
 
