@@ -274,6 +274,10 @@ func (s *GroupService) SetDefaultGroupID(ctx context.Context, userID string, gro
 		return ErrGroupIDMissing
 	}
 
+	if err := s.UserInGroup(ctx, userID, groupID); err != nil {
+		return err
+	}
+
 	return s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		return s.repo.SetDefaultGroupID(ctx, userID, groupID)
 	})

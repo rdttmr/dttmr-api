@@ -33,6 +33,7 @@ func NewMux(cfg Config) http.Handler {
 	authHandler := handler.NewAuthHandler(authService)
 	inviteHandler := handler.NewInviteHandler(inviteService)
 	userHandler := handler.NewUserHandler(userService, authService, registrationService)
+	groupHandler := handler.NewGroupHandler(groupService)
 	listHandler := handler.NewListHandler(listService, userService, groupService)
 	recipeHandler := handler.NewRecipeHandler(recipeService)
 	exerciseHandler := handler.NewExerciseHandler(exerciseService)
@@ -61,6 +62,16 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("DELETE /user/invites/{id}", protected(inviteHandler.DeleteInvite))
 	apiMux.Handle("GET /user/invites", protected(inviteHandler.GetInvites))
 	apiMux.Handle("GET /user/invites/status", protected(inviteHandler.GetInvitesStatus))
+
+	// Groups
+	apiMux.Handle("POST /groups", protected(groupHandler.CreateGroup))
+	apiMux.Handle("DELETE /groups/{id}", protected(groupHandler.DeleteGroup))
+	apiMux.Handle("POST /groups/{id}/name", protected(groupHandler.SetGroupName))
+	apiMux.Handle("GET /groups", protected(groupHandler.GetGroups))
+	apiMux.Handle("GET /groups/{id}/members", protected(groupHandler.GetGroupMembers))
+	apiMux.Handle("POST /groups/{id}/share", protected(groupHandler.ShareGroup))
+	apiMux.Handle("POST /groups/join/{code}", protected(groupHandler.JoinGroup))
+	apiMux.Handle("POST /groups/{id}/default", protected(groupHandler.SetDefaultGroup))
 
 	// Lists
 	apiMux.Handle("POST /lists", protected(listHandler.CreateList))
