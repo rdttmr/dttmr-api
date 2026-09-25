@@ -148,7 +148,7 @@ func (r *RecipeRepo) LockUserRecipes(ctx context.Context, userID string) ([]stri
 
 func (r *RecipeRepo) AddListItemToRecipe(ctx context.Context, recipeID string, listItemID string) error {
 	res, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO recipe_items (recipe_id, list_item_id) SELECT r.id, li.id FROM recipes r INNER JOIN list_items li ON li.id = $2 INNER JOIN lists l ON l.id = li.list_id AND l.group_id WHERE r.id = $1 FOR SHARE OF r, l",
+		"INSERT INTO recipe_items (recipe_id, list_item_id) SELECT r.id, li.id FROM recipes r INNER JOIN list_items li ON li.id = $2 INNER JOIN lists l ON l.id = li.list_id AND l.group_id = r.group_id WHERE r.id = $1 FOR SHARE OF r, l",
 		recipeID, listItemID,
 	)
 	if err != nil {

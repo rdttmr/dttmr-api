@@ -65,7 +65,7 @@ func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 // @Tags Group
 // @Accept json
 // @Produce json
-// @Param id path int true "Group ID"
+// @Param id path string true "Group ID"
 // @Success 204
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 500 {object} response.ErrorResponse "failed to delete group"
@@ -83,7 +83,7 @@ func (h *GroupHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 	authContext, err := domain.GetAuthContext(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to delete list")
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to delete group")
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *GroupHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 // @Tags Group
 // @Accept json
 // @Produce json
-// @Param id path int true "Group ID"
+// @Param id path string true "Group ID"
 // @Param payload body request.SetGroupNamePayload true "Update group name payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
@@ -189,7 +189,7 @@ func (h *GroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
 // @Tags Group
 // @Accept json
 // @Produce json
-// @Param id path int true "Group ID"
+// @Param id path string true "Group ID"
 // @Success 200 {object} []domain.User
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 401 {object} response.ErrorResponse "not authorized"
@@ -248,7 +248,7 @@ func (h *GroupHandler) ShareGroup(w http.ResponseWriter, r *http.Request) {
 	authContext, err := domain.GetAuthContext(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to share group")
 		return
 	}
 
@@ -259,7 +259,7 @@ func (h *GroupHandler) ShareGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "shared recipe successfully", slog.String("recipe_id", groupID))
+	slog.InfoContext(ctx, "shared recipe successfully", slog.String("group_id", groupID))
 	response.JSON(ctx, w, http.StatusOK, invite)
 }
 
