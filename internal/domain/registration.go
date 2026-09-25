@@ -8,11 +8,12 @@ import (
 type RegistrationService struct {
 	tx            Transactor
 	UserService   *UserService
+	GroupService  *GroupService
 	InviteService *InviteService
 }
 
-func NewRegistrationService(tx Transactor, u *UserService, i *InviteService) *RegistrationService {
-	return &RegistrationService{tx: tx, UserService: u, InviteService: i}
+func NewRegistrationService(tx Transactor, u *UserService, g *GroupService, i *InviteService) *RegistrationService {
+	return &RegistrationService{tx: tx, UserService: u, GroupService: g, InviteService: i}
 }
 
 func (s *RegistrationService) Register(ctx context.Context, inviteCode string, email string, username string, password string) (*User, error) {
@@ -27,6 +28,18 @@ func (s *RegistrationService) Register(ctx context.Context, inviteCode string, e
 		user, err = s.UserService.CreateUser(ctx, email, username, password)
 		if err != nil {
 			slog.ErrorContext(ctx, "failed to create user", slog.Any("error", err))
+			return err
+		}
+
+		group, err := s.GroupService.CreateGroup(ctx, user.ID, "Personal")
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to create group", slog.Any("error", err))
+			return err
+		}
+
+		err = s.GroupService.SetDefaultGroupID(ctx, user.ID, group.ID)
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to set default group", slog.Any("error", err))
 			return err
 		}
 

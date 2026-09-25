@@ -13,12 +13,12 @@ type RecipeRepo struct {
 	Repo
 }
 
-func (r *RecipeRepo) CreateRecipe(ctx context.Context, name string) (*domain.Recipe, error) {
-	recipe := &domain.Recipe{Name: name}
+func (r *RecipeRepo) CreateRecipe(ctx context.Context, groupID string, name string) (*domain.Recipe, error) {
+	recipe := &domain.Recipe{Name: name, GroupID: groupID}
 
 	err := r.conn(ctx).QueryRowContext(ctx,
-		"INSERT INTO recipes (name) VALUES ($1) RETURNING id, created_at, modified_at",
-		name,
+		"INSERT INTO recipes (name, group_id) VALUES ($1, $2) RETURNING id, created_at, modified_at",
+		name, groupID,
 	).Scan(&recipe.ID, &recipe.CreatedAt, &recipe.ModifiedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create recipe: %w", err)
@@ -35,6 +35,24 @@ func (r *RecipeRepo) DeleteRecipe(ctx context.Context, recipeID string) error {
 	return nil
 }
 
+func (r *RecipeRepo) SetRecipeGroup(ctx context.Context, recipeID string, groupID string) error {
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE recipes SET group_id = $1 WHERE id = $2", groupID, recipeID)
+	if err != nil {
+		return fmt.Errorf("failed to update recipe: %w", err)
+	}
+
+	// Delete orphaned list items that now no longer fit the group
+	_, err = r.conn(ctx).ExecContext(ctx,
+		"DELETE FROM recipe_items ri USING list_items li, lists l WHERE ri.recipe_id = $1 AND ri.list_item_id = li.id AND li.list_id = l.id AND l.group_id <> $2",
+		recipeID, groupID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete recipe items: %w", err)
+	}
+
+	return nil
+}
+
 func (r *RecipeRepo) SetRecipeName(ctx context.Context, recipeID string, name string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
 		"UPDATE recipes SET name = $1, modified_at = NOW() WHERE id = $2",
@@ -48,7 +66,7 @@ func (r *RecipeRepo) SetRecipeName(ctx context.Context, recipeID string, name st
 
 func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Recipe, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT r.id, r.name, r.created_at, r.modified_at, ru.position, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id) AS total_items FROM recipes AS r INNER JOIN recipe_users AS ru ON r.id=ru.recipe_id WHERE ru.user_id = $1 ORDER BY ru.position",
+		"SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) AS total_items FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at",
 		userID,
 	)
 	if err != nil {
@@ -59,7 +77,7 @@ func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Re
 	recipes := make([]domain.Recipe, 0, 16)
 	for rows.Next() {
 		var r domain.Recipe
-		err = rows.Scan(&r.ID, &r.Name, &r.CreatedAt, &r.ModifiedAt, &r.Position, &r.TotalItems)
+		err = rows.Scan(&r.ID, &r.Name, &r.GroupID, &r.CreatedAt, &r.ModifiedAt, &r.TotalItems, &r.Position)
 		if err != nil {
 			return nil, err
 		}
@@ -70,61 +88,11 @@ func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Re
 	return recipes, nil
 }
 
-func (r *RecipeRepo) UpsertShareCodeHash(ctx context.Context, userID string, recipeID string, codeHash string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO recipe_invites (recipe_id, code_hash, created_by) VALUES ($1, $2, $3) ON CONFLICT (recipe_id) DO UPDATE SET code_hash=EXCLUDED.code_hash, created_by=EXCLUDED.created_by, created_at=NOW()",
-		recipeID, codeHash, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to upsert share code hash: %w", err)
-	}
-
-	return nil
-}
-
-func (r *RecipeRepo) GetRecipeIDFromShareCode(ctx context.Context, codeHash string) (string, error) {
-	var recipeID string
-
-	err := r.conn(ctx).QueryRowContext(ctx,
-		"SELECT recipe_id FROM recipe_invites WHERE code_hash = $1",
-		codeHash,
-	).Scan(&recipeID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get recipe invite: %w", err)
-	}
-
-	return recipeID, nil
-}
-
-func (r *RecipeRepo) AddUserToRecipe(ctx context.Context, recipeID string, userID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO recipe_users (recipe_id, user_id) VALUES ($1, $2)",
-		recipeID, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to add user to recipe: %w", err)
-	}
-
-	return nil
-}
-
-func (r *RecipeRepo) RemoveUserFromRecipe(ctx context.Context, recipeID string, userID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"DELETE FROM recipe_users WHERE recipe_id = $1 AND user_id = $2",
-		recipeID, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to remove user from recipe: %w", err)
-	}
-
-	return nil
-}
-
 func (r *RecipeRepo) IsUserInRecipe(ctx context.Context, recipeID string, userID string) (bool, error) {
 	var cnt int
 
 	err := r.conn(ctx).QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM recipe_users WHERE recipe_id = $1 AND user_id = $2",
+		"SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = (SELECT r.group_id FROM recipes r WHERE r.id = $1) AND gm.user_id = $2",
 		recipeID, userID,
 	).Scan(&cnt)
 	if err != nil {
@@ -136,7 +104,7 @@ func (r *RecipeRepo) IsUserInRecipe(ctx context.Context, recipeID string, userID
 
 func (r *RecipeRepo) OrderUserRecipes(ctx context.Context, userID string, recipeIDs []string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
-		"UPDATE recipe_users AS ru SET position = o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(recipe_id, idx) WHERE ru.recipe_Id = o.recipe_id AND ru.user_id=$1",
+		"INSERT INTO recipe_positions (recipe_id, user_id, position) SELECT o.recipe_id, $1, o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY o(recipe_id, idx) ON CONFLICT (recipe_id, user_id) DO UPDATE SET position = EXCLUDED.position",
 		userID, recipeIDs,
 	)
 	if err != nil {
@@ -147,8 +115,16 @@ func (r *RecipeRepo) OrderUserRecipes(ctx context.Context, userID string, recipe
 }
 
 func (r *RecipeRepo) LockUserRecipes(ctx context.Context, userID string) ([]string, error) {
+	_, err := r.conn(ctx).ExecContext(ctx,
+		"SELECT pg_advisory_xact_lock(hashtextextended('recipe_positions:' || $1::text, 0))",
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lock recipe order: %w", err)
+	}
+
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT recipe_id FROM recipe_users WHERE user_id = $1 FOR UPDATE",
+		"SELECT r.id FROM recipes r WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY r.id FOR KEY SHARE OF r",
 		userID,
 	)
 	if err != nil {
@@ -171,12 +147,19 @@ func (r *RecipeRepo) LockUserRecipes(ctx context.Context, userID string) ([]stri
 }
 
 func (r *RecipeRepo) AddListItemToRecipe(ctx context.Context, recipeID string, listItemID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO recipe_items (recipe_id, list_item_id) VALUES ($1, $2)",
+	res, err := r.conn(ctx).ExecContext(ctx,
+		"INSERT INTO recipe_items (recipe_id, list_item_id) SELECT r.id, li.id FROM recipes r INNER JOIN list_items li ON li.id = $2 INNER JOIN lists l ON l.id = li.list_id AND l.group_id = r.group_id WHERE r.id = $1 FOR SHARE OF r, l",
 		recipeID, listItemID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to add list item to recipe: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected: %w", err)
+	}
+	if affected < 1 {
+		return domain.ErrListItemNotInGroup
 	}
 
 	return nil
