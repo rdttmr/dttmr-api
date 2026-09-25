@@ -1,9 +1,7 @@
 package handler
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -24,36 +22,6 @@ type ListHandler struct {
 
 func NewListHandler(listService *domain.ListService, userService *domain.UserService, groupService *domain.GroupService) *ListHandler {
 	return &ListHandler{ListService: listService, UserService: userService, GroupService: groupService}
-}
-
-func (h *ListHandler) ValidateGroupWritePermission(ctx context.Context, w http.ResponseWriter, action string, groupID *string, userID string) error {
-	var err error
-	if *groupID == "" {
-		*groupID, err = h.GroupService.GetDefaultGroupID(ctx, userID)
-		if err != nil {
-			slog.ErrorContext(ctx, "failed to get default group id", slog.Any("error", err))
-			response.Error(ctx, w, http.StatusInternalServerError, fmt.Sprintf("failed to %s", action))
-			return err
-		}
-	} else {
-		err := h.GroupService.UserHasWritePermission(ctx, userID, *groupID)
-		if err != nil {
-			if errors.Is(err, domain.ErrUserNoWritePermissions) {
-				slog.ErrorContext(ctx, "user has no permission to write",
-					slog.String("action", action),
-					slog.String("user_id", userID),
-					slog.String("group_id", *groupID))
-				response.Error(ctx, w, http.StatusForbidden, "user has no write permission")
-			} else {
-				slog.ErrorContext(ctx, "failed to get users role", slog.Any("error", err))
-				response.Error(ctx, w, http.StatusInternalServerError, fmt.Sprintf("failed to %s", action))
-			}
-
-			return err
-		}
-	}
-
-	return nil
 }
 
 // CreateList handles the creation of a list

@@ -83,7 +83,7 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 
 func (r *ListRepo) OrderLists(ctx context.Context, userID string, listIDs []string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
-		"UPDATE list_positions AS lp SET position = o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(list_id, idx) WHERE lp.list_id = o.list_id AND lp.user_id=$1",
+		"INSERT INTO list_positions (list_id, user_id, position) SELECT o.list_id, $1, o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY o(list_id, idx) ON CONFLICT (list_id, user_id) DO UPDATE SET position = EXCLUDED.position",
 		userID, listIDs,
 	)
 	if err != nil {
@@ -94,8 +94,16 @@ func (r *ListRepo) OrderLists(ctx context.Context, userID string, listIDs []stri
 }
 
 func (r *ListRepo) LockUsersLists(ctx context.Context, userID string) ([]string, error) {
+	_, err := r.conn(ctx).ExecContext(ctx,
+		"SELECT pg_advisory_xact_lock(hashtextextended('list_positions:' || $1::text, 0))",
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lock list order: %w", err)
+	}
+
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT list_id FROM list_positions WHERE user_id = $1 FOR UPDATE",
+		"SELECT l.id FROM lists l WHERE l.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY l.id FOR KEY SHARE OF l",
 		userID,
 	)
 	if err != nil {

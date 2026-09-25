@@ -94,7 +94,7 @@ func (r *RecipeRepo) IsUserInRecipe(ctx context.Context, recipeID string, userID
 
 func (r *RecipeRepo) OrderUserRecipes(ctx context.Context, userID string, recipeIDs []string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
-		"UPDATE recipe_users AS ru SET position = o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(recipe_id, idx) WHERE ru.recipe_Id = o.recipe_id AND ru.user_id=$1",
+		"INSERT INTO recipe_positions (recipe_id, user_id, position) SELECT o.recipe_id, $1, o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY o(recipe_id, idx) ON CONFLICT (recipe_id, user_id) DO UPDATE SET position = EXCLUDED.position",
 		userID, recipeIDs,
 	)
 	if err != nil {
@@ -105,8 +105,16 @@ func (r *RecipeRepo) OrderUserRecipes(ctx context.Context, userID string, recipe
 }
 
 func (r *RecipeRepo) LockUserRecipes(ctx context.Context, userID string) ([]string, error) {
+	_, err := r.conn(ctx).ExecContext(ctx,
+		"SELECT pg_advisory_xact_lock(hashtextextended('recipe_positions:' || $1::text, 0))",
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lock recipe order: %w", err)
+	}
+
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT recipe_id FROM recipe_users WHERE user_id = $1 FOR UPDATE",
+		"SELECT r.id FROM recipes r WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY r.id FOR KEY SHARE OF r",
 		userID,
 	)
 	if err != nil {
