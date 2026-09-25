@@ -1,7 +1,8 @@
 package request
 
 type CreateRecipePayload struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	GroupID string `json:"group_id"`
 }
 
 type SetRecipeNamePayload struct {

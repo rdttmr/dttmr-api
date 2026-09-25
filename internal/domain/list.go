@@ -86,12 +86,7 @@ func (s *ListService) CreateList(ctx context.Context, authUserID string, groupID
 		return nil, err
 	}
 
-	list, err := s.repo.CreateList(ctx, groupID, name)
-	if err != nil {
-		return nil, err
-	}
-
-	return list, nil
+	return s.repo.CreateList(ctx, groupID, name)
 }
 
 func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID string) error {

@@ -47,7 +47,7 @@ func (h *RecipeHandler) CreateRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	recipe, err := h.RecipeService.CreateRecipe(ctx, authContext.UserID, payload.Name)
+	recipe, err := h.RecipeService.CreateRecipe(ctx, authContext.UserID, payload.GroupID, payload.Name)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to create recipe", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
@@ -177,91 +177,6 @@ func (h *RecipeHandler) GetRecipes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(ctx, w, http.StatusOK, recipes)
-}
-
-// ShareRecipe handles the creation of a recipe share code
-//
-// @Summary Share recipe route
-// @Description Share a recipe, by creating a share code for it.
-// @Tags Recipe
-// @Accept json
-// @Produce json
-// @Param id path string true "Recipe ID"
-// @Success 200 {object} domain.RecipeShareCode
-// @Error 400 {object} response.ErrorResponse "failed to decode request url"
-// @Error 500 {object} response.ErrorResponse "failed to share recipe"
-// @Router /recipes/{id}/share [post]
-func (h *RecipeHandler) ShareRecipe(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	recipeID := r.PathValue("id")
-	if recipeID == "" {
-		slog.ErrorContext(ctx, "failed to read recipe id from path")
-		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
-		return
-	}
-
-	authContext, err := domain.GetAuthContext(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
-		return
-	}
-
-	shareCode, err := h.RecipeService.ShareRecipe(ctx, authContext.UserID, recipeID)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to create recipe share code", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to share recipe")
-		return
-	}
-
-	slog.InfoContext(ctx, "shared recipe successfully", slog.String("recipe_id", recipeID))
-	response.JSON(ctx, w, http.StatusOK, shareCode)
-}
-
-// JoinSharedRecipe handles joining a shared recipe
-//
-// @Summary Join a shared recipe route
-// @Description Join a shared recipe, by using the share code.
-// @Tags Recipe
-// @Accept json
-// @Produce json
-// @Param code path string true "Share code"
-// @Success 204 {object} nil
-// @Error 400 {object} response.ErrorResponse "failed to decode request url"
-// @Error 500 {object} response.ErrorResponse "failed to join recipe"
-// @Router /recipes/{code}/join [post]
-func (h *RecipeHandler) JoinSharedRecipe(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	code := r.PathValue("code")
-	if code == "" {
-		slog.ErrorContext(ctx, "failed to read code from path")
-		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
-		return
-	}
-
-	authContext, err := domain.GetAuthContext(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
-		return
-	}
-
-	// TODO: Check user has access to all list items in the recipe first
-	recipeID, err := h.RecipeService.JoinSharedRecipe(ctx, authContext.UserID, code)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to join recipe by share code",
-			slog.Any("error", err),
-			slog.String("code", code))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to join recipe")
-		return
-	}
-
-	slog.InfoContext(ctx, "joined recipe successfully",
-		slog.String("user_id", authContext.UserID),
-		slog.String("recipe_id", recipeID))
-	response.Status(w, http.StatusNoContent)
 }
 
 // OrderRecipes handles re-ordering a users recipes

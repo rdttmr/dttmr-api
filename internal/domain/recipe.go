@@ -16,6 +16,7 @@ var (
 
 type Recipe struct {
 	ID         string    `json:"id"`
+	GroupID    string    `json:"group_id"`
 	Name       string    `json:"name"`
 	CreatedAt  time.Time `json:"created_at"`
 	ModifiedAt time.Time `json:"modified_at"`
@@ -28,14 +29,11 @@ type RecipeShareCode struct {
 }
 
 type RecipeRepository interface {
-	CreateRecipe(ctx context.Context, name string) (*Recipe, error)
+	CreateRecipe(ctx context.Context, groupID string, name string) (*Recipe, error)
 	DeleteRecipe(ctx context.Context, recipeID string) error
+	SetRecipeGroup(ctx context.Context, recipeID string, groupID string) error
 	SetRecipeName(ctx context.Context, recipeID string, name string) error
 	GetRecipes(ctx context.Context, userID string) ([]Recipe, error)
-	UpsertShareCodeHash(ctx context.Context, userID string, recipeID string, codeHash string) error
-	GetRecipeIDFromShareCode(ctx context.Context, codeHash string) (string, error)
-	AddUserToRecipe(ctx context.Context, recipeID string, userID string) error
-	RemoveUserFromRecipe(ctx context.Context, recipeID string, userID string) error
 	IsUserInRecipe(ctx context.Context, recipeID string, userID string) (bool, error)
 	OrderUserRecipes(ctx context.Context, userID string, recipeIDs []string) error
 	LockUserRecipes(ctx context.Context, userID string) ([]string, error)
@@ -46,39 +44,38 @@ type RecipeRepository interface {
 }
 
 type RecipeService struct {
-	tx   Transactor
-	repo RecipeRepository
+	tx           Transactor
+	repo         RecipeRepository
+	GroupService *GroupService
 }
 
-func NewRecipeService(tx Transactor, r RecipeRepository) *RecipeService {
-	return &RecipeService{tx: tx, repo: r}
+func NewRecipeService(tx Transactor, r RecipeRepository, groupService *GroupService) *RecipeService {
+	return &RecipeService{tx: tx, repo: r, GroupService: groupService}
 }
 
-func (s *RecipeService) CreateRecipe(ctx context.Context, authUserID string, name string) (*Recipe, error) {
+func (s *RecipeService) CreateRecipe(ctx context.Context, authUserID string, groupID string, name string) (*Recipe, error) {
+	if authUserID == "" {
+		return nil, ErrUserIDMissing
+	}
 	if name == "" {
 		return nil, ErrNameMissing
 	}
-
-	var recipe *Recipe
-	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		r, err := s.repo.CreateRecipe(ctx, name)
+	if groupID == "" {
+		var err error
+		groupID, err = s.GroupService.GetDefaultGroupID(ctx, authUserID)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		err = s.repo.AddUserToRecipe(ctx, r.ID, authUserID)
-		if err != nil {
-			return err
+		if groupID == "" {
+			return nil, ErrGroupIDMissing
 		}
+	}
 
-		recipe = r
-		return nil
-	})
-	if err != nil {
+	if err := s.GroupService.UserHasWritePermission(ctx, authUserID, groupID); err != nil {
 		return nil, err
 	}
 
-	return recipe, nil
+	return s.repo.CreateRecipe(ctx, groupID, name)
 }
 
 func (s *RecipeService) DeleteRecipe(ctx context.Context, authUserID string, recipeID string) error {
@@ -120,48 +117,6 @@ func (s *RecipeService) GetRecipes(ctx context.Context, authUserID string) ([]Re
 	}
 
 	return s.repo.GetRecipes(ctx, authUserID)
-}
-
-func (s *RecipeService) ShareRecipe(ctx context.Context, authUserID string, recipeID string) (*RecipeShareCode, error) {
-	if authUserID == "" {
-		return nil, ErrUserIDMissing
-	}
-	if recipeID == "" {
-		return nil, ErrRecipeIDMissing
-	}
-
-	code, err := generateSecureToken(32)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.repo.UpsertShareCodeHash(ctx, authUserID, recipeID, hashToken(code))
-	if err != nil {
-		return nil, err
-	}
-
-	return &RecipeShareCode{Code: code}, nil
-}
-
-func (s *RecipeService) JoinSharedRecipe(ctx context.Context, authUserID string, joinCode string) (string, error) {
-	if authUserID == "" {
-		return "", ErrUserIDMissing
-	}
-	if joinCode == "" {
-		return "", ErrJoinCodeMissing
-	}
-
-	recipeID, err := s.repo.GetRecipeIDFromShareCode(ctx, hashToken(joinCode))
-	if err != nil {
-		return "", err
-	}
-
-	err = s.repo.AddUserToRecipe(ctx, recipeID, authUserID)
-	if err != nil {
-		return "", err
-	}
-
-	return recipeID, nil
 }
 
 func (s *RecipeService) OrderRecipes(ctx context.Context, authUserID string, recipeIDs []string) error {

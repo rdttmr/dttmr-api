@@ -35,6 +35,14 @@ func (r *RecipeRepo) DeleteRecipe(ctx context.Context, recipeID string) error {
 	return nil
 }
 
+func (r *RecipeRepo) SetRecipeGroup(ctx context.Context, recipeID string, groupID string) error {
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE recipes SET group_id = $1 WHERE id = $2", groupID, recipeID)
+	if err != nil {
+		return fmt.Errorf("failed to update recipe: %w", err)
+	}
+	return nil
+}
+
 func (r *RecipeRepo) SetRecipeName(ctx context.Context, recipeID string, name string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
 		"UPDATE recipes SET name = $1, modified_at = NOW() WHERE id = $2",
@@ -48,7 +56,7 @@ func (r *RecipeRepo) SetRecipeName(ctx context.Context, recipeID string, name st
 
 func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Recipe, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT r.id, r.name, r.created_at, r.modified_at, ru.position, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id) AS total_items FROM recipes AS r INNER JOIN recipe_users AS ru ON r.id=ru.recipe_id WHERE ru.user_id = $1 ORDER BY ru.position",
+		"SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) AS total_items FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at",
 		userID,
 	)
 	if err != nil {
@@ -59,7 +67,7 @@ func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Re
 	recipes := make([]domain.Recipe, 0, 16)
 	for rows.Next() {
 		var r domain.Recipe
-		err = rows.Scan(&r.ID, &r.Name, &r.CreatedAt, &r.ModifiedAt, &r.Position, &r.TotalItems)
+		err = rows.Scan(&r.ID, &r.Name, &r.GroupID, &r.CreatedAt, &r.ModifiedAt, &r.TotalItems, &r.Position)
 		if err != nil {
 			return nil, err
 		}
@@ -70,61 +78,11 @@ func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Re
 	return recipes, nil
 }
 
-func (r *RecipeRepo) UpsertShareCodeHash(ctx context.Context, userID string, recipeID string, codeHash string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO recipe_invites (recipe_id, code_hash, created_by) VALUES ($1, $2, $3) ON CONFLICT (recipe_id) DO UPDATE SET code_hash=EXCLUDED.code_hash, created_by=EXCLUDED.created_by, created_at=NOW()",
-		recipeID, codeHash, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to upsert share code hash: %w", err)
-	}
-
-	return nil
-}
-
-func (r *RecipeRepo) GetRecipeIDFromShareCode(ctx context.Context, codeHash string) (string, error) {
-	var recipeID string
-
-	err := r.conn(ctx).QueryRowContext(ctx,
-		"SELECT recipe_id FROM recipe_invites WHERE code_hash = $1",
-		codeHash,
-	).Scan(&recipeID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get recipe invite: %w", err)
-	}
-
-	return recipeID, nil
-}
-
-func (r *RecipeRepo) AddUserToRecipe(ctx context.Context, recipeID string, userID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO recipe_users (recipe_id, user_id) VALUES ($1, $2)",
-		recipeID, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to add user to recipe: %w", err)
-	}
-
-	return nil
-}
-
-func (r *RecipeRepo) RemoveUserFromRecipe(ctx context.Context, recipeID string, userID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"DELETE FROM recipe_users WHERE recipe_id = $1 AND user_id = $2",
-		recipeID, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to remove user from recipe: %w", err)
-	}
-
-	return nil
-}
-
 func (r *RecipeRepo) IsUserInRecipe(ctx context.Context, recipeID string, userID string) (bool, error) {
 	var cnt int
 
 	err := r.conn(ctx).QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM recipe_users WHERE recipe_id = $1 AND user_id = $2",
+		"SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = (SELECT r.group_id FROM recipes r WHERE r.id = $1) AND gm.user_id = $2",
 		recipeID, userID,
 	).Scan(&cnt)
 	if err != nil {
