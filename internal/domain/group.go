@@ -135,9 +135,16 @@ func (s *GroupService) GetGroups(ctx context.Context, authUserID string) ([]Grou
 	return groups, nil
 }
 
-func (s *GroupService) CreateInvite(ctx context.Context, authUserID string) (*GroupInvite, error) {
+func (s *GroupService) ShareGroup(ctx context.Context, authUserID string, groupID string) (*GroupInvite, error) {
 	if authUserID == "" {
 		return nil, ErrUserIDMissing
+	}
+	if groupID == "" {
+		return nil, ErrGroupIDMissing
+	}
+
+	if err := s.UserHasWritePermission(ctx, authUserID, groupID); err != nil {
+		return nil, err
 	}
 
 	token, err := generateSecureToken(32)
@@ -147,7 +154,7 @@ func (s *GroupService) CreateInvite(ctx context.Context, authUserID string) (*Gr
 	code := hashToken(token)
 	expiresAt := time.Now().Add(time.Hour * 24 * 7)
 
-	invite, err := s.repo.CreateGroupInvite(ctx, authUserID, code, expiresAt, authUserID)
+	invite, err := s.repo.CreateGroupInvite(ctx, groupID, code, expiresAt, authUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -167,15 +174,37 @@ func (s *GroupService) DeleteInvite(ctx context.Context, authUserID string, invi
 	return s.repo.DeleteGroupInvite(ctx, inviteID, authUserID)
 }
 
-func (s *GroupService) ConsumeInvite(ctx context.Context, authUserID, inviteID string) error {
+func (s *GroupService) JoinGroup(ctx context.Context, authUserID, joinCode string) (string, error) {
 	if authUserID == "" {
-		return ErrUserIDMissing
+		return "", ErrUserIDMissing
 	}
-	if inviteID == "" {
-		return ErrInviteIDMissing
+	if joinCode == "" {
+		return "", ErrJoinCodeMissing
 	}
 
-	return s.repo.ConsumeGroupInvite(ctx, hashToken(inviteID), authUserID)
+	invite, err := s.repo.GetGroupInvite(ctx, hashToken(joinCode))
+	if err != nil {
+		return "", err
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		err := s.repo.ConsumeGroupInvite(ctx, invite.ID, authUserID)
+		if err != nil {
+			return err
+		}
+
+		err = s.repo.AddUserToGroup(ctx, invite.GroupID, authUserID, RoleMember)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return invite.GroupID, nil
 }
 
 func (s *GroupService) AddUserToGroup(ctx context.Context, groupID string, userID string, role string) error {
