@@ -340,7 +340,7 @@ func (h *GroupHandler) SetDefaultGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.GroupService.SetDefaultGroupID(ctx, authContext.UserID, groupID)
+	err = h.GroupService.SetDefaultGroupID(ctx, authContext.UserID, groupID)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to set default group", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to set default group")
