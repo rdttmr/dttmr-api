@@ -43,10 +43,11 @@ WHERE r.id = o.recipe_id;
 
 ALTER TABLE lists
     ALTER COLUMN group_id SET NOT NULL;
+CREATE INDEX idx_lists_group_id ON lists (group_id);
 
 ALTER TABLE recipes
     ALTER COLUMN group_id SET NOT NULL;
-
+CREATE INDEX idx_recipes_group_id ON recipes (group_id);
 
 CREATE TABLE list_positions (
     list_id UUID NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
