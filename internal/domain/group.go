@@ -228,6 +228,21 @@ func (s *GroupService) JoinGroup(ctx context.Context, authUserID, joinCode strin
 	return invite.GroupID, nil
 }
 
+func (s *GroupService) LeaveGroup(ctx context.Context, authUserID string, groupID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if groupID == "" {
+		return ErrGroupIDMissing
+	}
+
+	if err := s.UserInGroup(ctx, authUserID, groupID); err != nil {
+		return err
+	}
+
+	return s.repo.RemoveUserFromGroup(ctx, groupID, authUserID)
+}
+
 func (s *GroupService) AddUserToGroup(ctx context.Context, groupID string, userID string, role string) error {
 	if groupID == "" {
 		return ErrGroupIDMissing
