@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	_ Transactor     = (*fakeTransactor)(nil)
-	_ ListRepository = (*mockListRepository)(nil)
+	_ Transactor      = (*fakeTransactor)(nil)
+	_ ListRepository  = (*mockListRepository)(nil)
+	_ GroupRepository = (*mockGroupRepository)(nil)
 )
 
 type txCtxKey struct{}
@@ -50,6 +51,11 @@ func (m *mockListRepository) DeleteList(ctx context.Context, listID string) erro
 	return args.Error(0)
 }
 
+func (m *mockListRepository) SetListGroup(ctx context.Context, listID string, groupID string) error {
+	args := m.Called(ctx, listID, groupID)
+	return args.Error(0)
+}
+
 func (m *mockListRepository) SetListName(ctx context.Context, listID string, name string) error {
 	args := m.Called(ctx, listID, name)
 	return args.Error(0)
@@ -59,16 +65,6 @@ func (m *mockListRepository) GetLists(ctx context.Context, userID string) ([]Lis
 	args := m.Called(ctx, userID)
 	lists, _ := args.Get(0).([]List)
 	return lists, args.Error(1)
-}
-
-func (m *mockListRepository) AddUserToList(ctx context.Context, listID string, userID string) error {
-	args := m.Called(ctx, listID, userID)
-	return args.Error(0)
-}
-
-func (m *mockListRepository) RemoveUserFromList(ctx context.Context, listID string, userID string) error {
-	args := m.Called(ctx, listID, userID)
-	return args.Error(0)
 }
 
 func (m *mockListRepository) OrderLists(ctx context.Context, userID string, listIDs []string) error {
@@ -124,88 +120,306 @@ func (m *mockListRepository) GetListItemsForList(ctx context.Context, listID str
 	return items, args.Error(1)
 }
 
-func (m *mockListRepository) GetListItemsForUser(ctx context.Context, userID string) ([]ListItem, error) {
-	args := m.Called(ctx, userID)
-	items, _ := args.Get(0).([]ListItem)
-	return items, args.Error(1)
+type mockGroupRepository struct {
+	mock.Mock
 }
 
-func newListService(t *testing.T) (*ListService, *mockListRepository, *fakeTransactor) {
+func (m *mockGroupRepository) CreateGroup(ctx context.Context, name string, createdBy string) (*Group, error) {
+	args := m.Called(ctx, name, createdBy)
+	group, _ := args.Get(0).(*Group)
+	return group, args.Error(1)
+}
+
+func (m *mockGroupRepository) DeleteGroup(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *mockGroupRepository) SetGroupName(ctx context.Context, id string, name string) error {
+	args := m.Called(ctx, id, name)
+	return args.Error(0)
+}
+
+func (m *mockGroupRepository) GetGroups(ctx context.Context, userID string) ([]Group, error) {
+	args := m.Called(ctx, userID)
+	groups, _ := args.Get(0).([]Group)
+	return groups, args.Error(1)
+}
+
+func (m *mockGroupRepository) CreateGroupInvite(ctx context.Context, groupID string, codeHash string, expiresAt time.Time, createdBy string) (*GroupInvite, error) {
+	args := m.Called(ctx, groupID, codeHash, expiresAt, createdBy)
+	invite, _ := args.Get(0).(*GroupInvite)
+	return invite, args.Error(1)
+}
+
+func (m *mockGroupRepository) DeleteGroupInvite(ctx context.Context, inviteID string, createdBy string) error {
+	args := m.Called(ctx, inviteID, createdBy)
+	return args.Error(0)
+}
+
+func (m *mockGroupRepository) GetGroupInvite(ctx context.Context, codeHash string) (*GroupInvite, error) {
+	args := m.Called(ctx, codeHash)
+	invite, _ := args.Get(0).(*GroupInvite)
+	return invite, args.Error(1)
+}
+
+func (m *mockGroupRepository) ConsumeGroupInvite(ctx context.Context, inviteID string, usedBy string) error {
+	args := m.Called(ctx, inviteID, usedBy)
+	return args.Error(0)
+}
+
+func (m *mockGroupRepository) AddUserToGroup(ctx context.Context, groupID string, userID string, role string) error {
+	args := m.Called(ctx, groupID, userID, role)
+	return args.Error(0)
+}
+
+func (m *mockGroupRepository) RemoveUserFromGroup(ctx context.Context, groupID string, userID string) error {
+	args := m.Called(ctx, groupID, userID)
+	return args.Error(0)
+}
+
+func (m *mockGroupRepository) GetGroupMembers(ctx context.Context, groupID string) ([]User, error) {
+	args := m.Called(ctx, groupID)
+	members, _ := args.Get(0).([]User)
+	return members, args.Error(1)
+}
+
+func (m *mockGroupRepository) IsUserInGroup(ctx context.Context, groupID string, userID string) (bool, error) {
+	args := m.Called(ctx, groupID, userID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockGroupRepository) GetRoleForGroup(ctx context.Context, groupID string, userID string) (string, error) {
+	args := m.Called(ctx, groupID, userID)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockGroupRepository) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
+	args := m.Called(ctx, userID)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockGroupRepository) SetDefaultGroupID(ctx context.Context, userID string, groupID string) error {
+	args := m.Called(ctx, userID, groupID)
+	return args.Error(0)
+}
+
+// newListServiceWithGroups wires a ListService to a real GroupService backed
+// by a mock GroupRepository. The group service gets its own transactor, so
+// tx.calls only counts transactions started by the list service.
+func newListServiceWithGroups(t *testing.T) (*ListService, *mockListRepository, *mockGroupRepository, *fakeTransactor) {
 	t.Helper()
 
 	repo := &mockListRepository{}
 	repo.Test(t)
 	t.Cleanup(func() { repo.AssertExpectations(t) })
 
-	tx := &fakeTransactor{}
+	groups := &mockGroupRepository{}
+	groups.Test(t)
+	t.Cleanup(func() { groups.AssertExpectations(t) })
 
-	return NewListService(tx, repo), repo, tx
+	tx := &fakeTransactor{}
+	groupService := NewGroupService(&fakeTransactor{}, groups)
+
+	return NewListService(tx, repo, groupService), repo, groups, tx
+}
+
+// newListService is for tests that never reach the group service. Any
+// unexpected group repository call fails the test.
+func newListService(t *testing.T) (*ListService, *mockListRepository, *fakeTransactor) {
+	t.Helper()
+
+	svc, repo, _, tx := newListServiceWithGroups(t)
+	return svc, repo, tx
+}
+
+func callOrder(calls []mock.Call) []string {
+	var got []string
+	for _, c := range calls {
+		got = append(got, c.Method)
+	}
+	return got
 }
 
 func assertCallOrder(t *testing.T, repo *mockListRepository, want ...string) {
 	t.Helper()
+	assert.Equal(t, want, callOrder(repo.Calls))
+}
 
-	var got []string
-	for _, c := range repo.Calls {
-		got = append(got, c.Method)
-	}
-	assert.Equal(t, want, got)
+func assertGroupCallOrder(t *testing.T, groups *mockGroupRepository, want ...string) {
+	t.Helper()
+	assert.Equal(t, want, callOrder(groups.Calls))
 }
 
 func TestListService_CreateList(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("creates the list and adds the creator in one transaction", func(t *testing.T) {
-		svc, repo, tx := newListService(t)
+	t.Run("creates the list in the given group", func(t *testing.T) {
+		tests := []struct {
+			name string
+			role string
+		}{
+			{name: "as owner", role: RoleOwner},
+			{name: "as member", role: RoleMember},
+		}
 
-		created := &List{ID: "list-1", GroupID: "group-1", Name: "Groceries", CreatedAt: time.Now()}
-		repo.On("CreateList", inTx, "group-1", "Groceries").Return(created, nil)
-		repo.On("AddUserToList", inTx, "list-1", "user-1").Return(nil)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				svc, repo, groups, tx := newListServiceWithGroups(t)
 
-		list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
+				created := &List{ID: "list-1", GroupID: "group-1", Name: "Groceries", CreatedAt: time.Now()}
+				groups.On("GetRoleForGroup", mock.Anything, "group-1", "user-1").Return(tt.role, nil)
+				repo.On("CreateList", mock.Anything, "group-1", "Groceries").Return(created, nil)
+
+				list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
+
+				require.NoError(t, err)
+				assert.Equal(t, created, list)
+				assert.Zero(t, tx.calls)
+				assertGroupCallOrder(t, groups, "GetRoleForGroup")
+				assertCallOrder(t, repo, "CreateList")
+			})
+		}
+	})
+
+	t.Run("falls back to the default group when no group id is given", func(t *testing.T) {
+		svc, repo, groups, _ := newListServiceWithGroups(t)
+
+		created := &List{ID: "list-1", GroupID: "group-default", Name: "Groceries"}
+		groups.On("GetDefaultGroupID", mock.Anything, "user-1").Return("group-default", nil)
+		groups.On("GetRoleForGroup", mock.Anything, "group-default", "user-1").Return(RoleOwner, nil)
+		repo.On("CreateList", mock.Anything, "group-default", "Groceries").Return(created, nil)
+
+		list, err := svc.CreateList(ctx, "user-1", "", "Groceries")
 
 		require.NoError(t, err)
 		assert.Equal(t, created, list)
-		assert.Equal(t, 1, tx.calls)
-		assertCallOrder(t, repo, "CreateList", "AddUserToList")
+		assertGroupCallOrder(t, groups, "GetDefaultGroupID", "GetRoleForGroup")
+		assertCallOrder(t, repo, "CreateList")
 	})
 
-	t.Run("insert error aborts before adding the user", func(t *testing.T) {
-		svc, repo, _ := newListService(t)
+	t.Run("default group lookup error is returned before any write", func(t *testing.T) {
+		svc, repo, groups, _ := newListServiceWithGroups(t)
 
-		repoErr := errors.New("insert failed")
-		repo.On("CreateList", inTx, "group-1", "Groceries").Return(nil, repoErr)
+		lookupErr := errors.New("no default group")
+		groups.On("GetDefaultGroupID", mock.Anything, "user-1").Return("", lookupErr)
+
+		list, err := svc.CreateList(ctx, "user-1", "", "Groceries")
+
+		assert.Nil(t, list)
+		assert.ErrorIs(t, err, lookupErr)
+		assertGroupCallOrder(t, groups, "GetDefaultGroupID")
+		assertCallOrder(t, repo)
+	})
+
+	t.Run("non-member of the group is refused before any write", func(t *testing.T) {
+		svc, repo, groups, _ := newListServiceWithGroups(t)
+
+		groups.On("GetRoleForGroup", mock.Anything, "group-foreign", "user-1").Return("", ErrUserNotInGroup)
+
+		list, err := svc.CreateList(ctx, "user-1", "group-foreign", "Groceries")
+
+		assert.Nil(t, list)
+		assert.ErrorIs(t, err, ErrUserNoWritePermissions)
+		assertCallOrder(t, repo)
+	})
+
+	t.Run("role lookup error is propagated, not masked", func(t *testing.T) {
+		svc, repo, groups, _ := newListServiceWithGroups(t)
+
+		repoErr := errors.New("connection reset")
+		groups.On("GetRoleForGroup", mock.Anything, "group-1", "user-1").Return("", repoErr)
 
 		list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
 
 		assert.Nil(t, list)
 		assert.ErrorIs(t, err, repoErr)
-		assertCallOrder(t, repo, "CreateList")
+		assert.NotErrorIs(t, err, ErrUserNoWritePermissions)
+		assertCallOrder(t, repo)
 	})
 
-	t.Run("membership insert error fails the whole operation", func(t *testing.T) {
-		svc, repo, _ := newListService(t)
+	t.Run("insert error is propagated", func(t *testing.T) {
+		svc, repo, groups, _ := newListServiceWithGroups(t)
 
-		repoErr := errors.New("foreign key violation")
-		repo.On("CreateList", inTx, "group-1", "Groceries").Return(&List{ID: "list-1", Name: "Groceries"}, nil)
-		repo.On("AddUserToList", inTx, "list-1", "user-1").Return(repoErr)
+		repoErr := errors.New("insert failed")
+		groups.On("GetRoleForGroup", mock.Anything, "group-1", "user-1").Return(RoleMember, nil)
+		repo.On("CreateList", mock.Anything, "group-1", "Groceries").Return(nil, repoErr)
 
 		list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
 
-		assert.Nil(t, list, "no half-created list may be returned")
+		assert.Nil(t, list)
+		assert.ErrorIs(t, err, repoErr)
+	})
+}
+
+func TestListService_SetListGroup(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("moves the list inside one transaction", func(t *testing.T) {
+		svc, repo, groups, tx := newListServiceWithGroups(t)
+
+		repo.On("IsUserInList", mock.Anything, "list-1", "user-1").Return(true, nil)
+		groups.On("GetRoleForGroup", mock.Anything, "group-2", "user-1").Return(RoleMember, nil)
+		repo.On("SetListGroup", inTx, "list-1", "group-2").Return(nil)
+
+		err := svc.SetListGroup(ctx, "user-1", "list-1", "group-2")
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, tx.calls)
+		assertCallOrder(t, repo, "IsUserInList", "SetListGroup")
+		assertGroupCallOrder(t, groups, "GetRoleForGroup")
+	})
+
+	t.Run("user without access to the list is refused", func(t *testing.T) {
+		svc, repo, groups, tx := newListServiceWithGroups(t)
+
+		repo.On("IsUserInList", mock.Anything, "list-1", "intruder").Return(false, nil)
+
+		err := svc.SetListGroup(ctx, "intruder", "list-1", "group-2")
+
+		assert.ErrorIs(t, err, ErrUserNotInList)
+		assert.Zero(t, tx.calls)
+		assertCallOrder(t, repo, "IsUserInList")
+		assertGroupCallOrder(t, groups)
+	})
+
+	t.Run("moving into a group the user is not in is refused", func(t *testing.T) {
+		svc, repo, groups, tx := newListServiceWithGroups(t)
+
+		repo.On("IsUserInList", mock.Anything, "list-1", "user-1").Return(true, nil)
+		groups.On("GetRoleForGroup", mock.Anything, "group-foreign", "user-1").Return("", ErrUserNotInGroup)
+
+		err := svc.SetListGroup(ctx, "user-1", "list-1", "group-foreign")
+
+		assert.ErrorIs(t, err, ErrUserNoWritePermissions)
+		assert.Zero(t, tx.calls)
+		assertCallOrder(t, repo, "IsUserInList")
+	})
+
+	t.Run("repository error is propagated", func(t *testing.T) {
+		svc, repo, groups, _ := newListServiceWithGroups(t)
+
+		repoErr := errors.New("update failed")
+		repo.On("IsUserInList", mock.Anything, "list-1", "user-1").Return(true, nil)
+		groups.On("GetRoleForGroup", mock.Anything, "group-2", "user-1").Return(RoleMember, nil)
+		repo.On("SetListGroup", inTx, "list-1", "group-2").Return(repoErr)
+
+		err := svc.SetListGroup(ctx, "user-1", "list-1", "group-2")
+
 		assert.ErrorIs(t, err, repoErr)
 	})
 
 	t.Run("transaction begin error is returned", func(t *testing.T) {
-		svc, repo, tx := newListService(t)
+		svc, repo, groups, tx := newListServiceWithGroups(t)
 
 		tx.err = errors.New("could not begin transaction")
+		repo.On("IsUserInList", mock.Anything, "list-1", "user-1").Return(true, nil)
+		groups.On("GetRoleForGroup", mock.Anything, "group-2", "user-1").Return(RoleMember, nil)
 
-		list, err := svc.CreateList(ctx, "user-1", "group-1", "Groceries")
+		err := svc.SetListGroup(ctx, "user-1", "list-1", "group-2")
 
-		assert.Nil(t, list)
 		assert.ErrorIs(t, err, tx.err)
-		assertCallOrder(t, repo)
+		assertCallOrder(t, repo, "IsUserInList")
 	})
 }
 
@@ -239,7 +453,10 @@ func TestListService_GetLists(t *testing.T) {
 	t.Run("returns the user's lists", func(t *testing.T) {
 		svc, repo, _ := newListService(t)
 
-		want := []List{{ID: "list-1", Name: "Groceries"}, {ID: "list-2", Name: "Reading"}}
+		want := []List{
+			{ID: "list-1", GroupID: "group-1", Name: "Groceries"},
+			{ID: "list-2", GroupID: "group-2", Name: "Reading"},
+		}
 		repo.On("GetLists", mock.Anything, "user-1").Return(want, nil)
 
 		lists, err := svc.GetLists(ctx, "user-1")
@@ -269,45 +486,6 @@ func TestListService_GetLists(t *testing.T) {
 
 		assert.Nil(t, lists)
 		assert.ErrorIs(t, err, repoErr)
-	})
-}
-
-func TestListService_AddUserToList(t *testing.T) {
-	svc, repo, _ := newListService(t)
-
-	repo.On("IsUserInList", mock.Anything, "list-1", "user-1").Return(true, nil)
-	repo.On("AddUserToList", mock.Anything, "list-1", "user-2").Return(nil)
-
-	err := svc.AddUserToList(context.Background(), "user-1", "list-1", "user-2")
-
-	require.NoError(t, err)
-	assertCallOrder(t, repo, "IsUserInList", "AddUserToList")
-}
-
-func TestListService_RemoveUserFromList(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("member removes another member", func(t *testing.T) {
-		svc, repo, _ := newListService(t)
-
-		repo.On("IsUserInList", mock.Anything, "list-1", "user-1").Return(true, nil)
-		repo.On("RemoveUserFromList", mock.Anything, "list-1", "user-2").Return(nil)
-
-		err := svc.RemoveUserFromList(ctx, "user-1", "list-1", "user-2")
-
-		require.NoError(t, err)
-		assertCallOrder(t, repo, "IsUserInList", "RemoveUserFromList")
-	})
-
-	t.Run("member leaves the list", func(t *testing.T) {
-		svc, repo, _ := newListService(t)
-
-		repo.On("IsUserInList", mock.Anything, "list-1", "user-1").Return(true, nil)
-		repo.On("RemoveUserFromList", mock.Anything, "list-1", "user-1").Return(nil)
-
-		err := svc.RemoveUserFromList(ctx, "user-1", "list-1", "user-1")
-
-		require.NoError(t, err)
 	})
 }
 
@@ -503,23 +681,6 @@ func TestListService_GetListItemsForList(t *testing.T) {
 	assertCallOrder(t, repo, "IsUserInList", "GetListItemsForList")
 }
 
-func TestListService_GetListItemsForUser(t *testing.T) {
-	svc, repo, _ := newListService(t)
-
-	want := []ListItem{
-		{ID: "item-1", ListID: "list-1", Title: "Milk"},
-		{ID: "item-2", ListID: "list-1", Title: "Bread", IsCompleted: true},
-		{ID: "item-3", ListID: "list-2", Title: "Bread", IsCompleted: true},
-	}
-	repo.On("GetListItemsForUser", mock.Anything, "user-1").Return(want, nil)
-
-	items, err := svc.GetListItemsForUser(context.Background(), "user-1")
-
-	require.NoError(t, err)
-	assert.Equal(t, want, items)
-	assertCallOrder(t, repo, "GetListItemsForUser")
-}
-
 type guardedOp struct {
 	name string
 	// byItem is true when membership is resolved through a list item id
@@ -546,6 +707,9 @@ func (op guardedOp) expectGuard(repo *mockListRepository, userID string, inList 
 	repo.On("IsUserInList", mock.Anything, "list-1", userID).Return(inList, err)
 }
 
+// guardedOps covers the operations whose only access check is group
+// membership via the list (or the item's list). SetListGroup also checks the
+// target group and is tested separately.
 func guardedOps() []guardedOp {
 	ctx := context.Background()
 
@@ -564,24 +728,6 @@ func guardedOps() []guardedOp {
 			},
 			call: func(svc *ListService, userID string) error {
 				return svc.DeleteList(ctx, userID, "list-1")
-			},
-		},
-		{
-			name: "AddUserToList",
-			expectRepo: func(repo *mockListRepository, err error) {
-				repo.On("AddUserToList", mock.Anything, "list-1", "user-2").Return(err)
-			},
-			call: func(svc *ListService, userID string) error {
-				return svc.AddUserToList(ctx, userID, "list-1", "user-2")
-			},
-		},
-		{
-			name: "RemoveUserFromList",
-			expectRepo: func(repo *mockListRepository, err error) {
-				repo.On("RemoveUserFromList", mock.Anything, "list-1", "user-2").Return(err)
-			},
-			call: func(svc *ListService, userID string) error {
-				return svc.RemoveUserFromList(ctx, userID, "list-1", "user-2")
 			},
 		},
 		{
@@ -728,20 +874,35 @@ func TestListService_ValidationErrors(t *testing.T) {
 			wantErr: ErrUserIDMissing,
 		},
 		{
-			name: "CreateList without group id",
-			call: func(svc *ListService) error {
-				_, err := svc.CreateList(ctx, "user-1", "", "name-1")
-				return err
-			},
-			wantErr: ErrGroupIDMissing,
-		},
-		{
 			name: "CreateList without name",
 			call: func(svc *ListService) error {
 				_, err := svc.CreateList(ctx, "user-1", "group-1", "")
 				return err
 			},
 			wantErr: ErrListNameMissing,
+		},
+		{
+			name: "CreateList without name and without group id",
+			call: func(svc *ListService) error {
+				_, err := svc.CreateList(ctx, "user-1", "", "")
+				return err
+			},
+			wantErr: ErrListNameMissing,
+		},
+		{
+			name:    "SetListGroup without auth user id",
+			call:    func(svc *ListService) error { return svc.SetListGroup(ctx, "", "list-1", "group-1") },
+			wantErr: ErrUserIDMissing,
+		},
+		{
+			name:    "SetListGroup without list id",
+			call:    func(svc *ListService) error { return svc.SetListGroup(ctx, "user-1", "", "group-1") },
+			wantErr: ErrListIDMissing,
+		},
+		{
+			name:    "SetListGroup without group id",
+			call:    func(svc *ListService) error { return svc.SetListGroup(ctx, "user-1", "list-1", "") },
+			wantErr: ErrGroupIDMissing,
 		},
 		{
 			name:    "DeleteList without auth user id",
@@ -754,33 +915,11 @@ func TestListService_ValidationErrors(t *testing.T) {
 			wantErr: ErrListIDMissing,
 		},
 		{
-			name:    "AddUserToList without auth user id",
-			call:    func(svc *ListService) error { return svc.AddUserToList(ctx, "", "list-1", "user-2") },
-			wantErr: ErrUserIDMissing,
-		},
-		{
-			name:    "AddUserToList without list id",
-			call:    func(svc *ListService) error { return svc.AddUserToList(ctx, "user-1", "", "user-2") },
-			wantErr: ErrListIDMissing,
-		},
-		{
-			name:    "AddUserToList without user id",
-			call:    func(svc *ListService) error { return svc.AddUserToList(ctx, "user-1", "list-1", "") },
-			wantErr: ErrUserIDMissing,
-		},
-		{
-			name:    "RemoveUserFromList without auth user id",
-			call:    func(svc *ListService) error { return svc.RemoveUserFromList(ctx, "", "list-1", "user-2") },
-			wantErr: ErrUserIDMissing,
-		},
-		{
-			name:    "RemoveUserFromList without list id",
-			call:    func(svc *ListService) error { return svc.RemoveUserFromList(ctx, "user-1", "", "user-2") },
-			wantErr: ErrListIDMissing,
-		},
-		{
-			name:    "RemoveUserFromList without user id",
-			call:    func(svc *ListService) error { return svc.RemoveUserFromList(ctx, "user-1", "list-1", "") },
+			name: "GetLists without auth user id",
+			call: func(svc *ListService) error {
+				_, err := svc.GetLists(ctx, "")
+				return err
+			},
 			wantErr: ErrUserIDMissing,
 		},
 		{
@@ -833,6 +972,11 @@ func TestListService_ValidationErrors(t *testing.T) {
 			wantErr: ErrListItemIDMissing,
 		},
 		{
+			name:    "UpdateListItem without auth user id",
+			call:    func(svc *ListService) error { return svc.UpdateListItem(ctx, "", "item-1", "Milk", false) },
+			wantErr: ErrUserIDMissing,
+		},
+		{
 			name:    "UpdateListItem without item id",
 			call:    func(svc *ListService) error { return svc.UpdateListItem(ctx, "user-1", "", "Milk", false) },
 			wantErr: ErrListItemIDMissing,
@@ -883,25 +1027,18 @@ func TestListService_ValidationErrors(t *testing.T) {
 			},
 			wantErr: ErrListIDMissing,
 		},
-		{
-			name: "GetListItemsForUser without user id",
-			call: func(svc *ListService) error {
-				_, err := svc.GetListItemsForUser(ctx, "")
-				return err
-			},
-			wantErr: ErrUserIDMissing,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, repo, tx := newListService(t)
+			svc, repo, groups, tx := newListServiceWithGroups(t)
 
 			err := tt.call(svc)
 
 			assert.ErrorIs(t, err, tt.wantErr)
 			assert.Zero(t, tx.calls, "no transaction may be started")
 			assertCallOrder(t, repo)
+			assertGroupCallOrder(t, groups)
 		})
 	}
 }
