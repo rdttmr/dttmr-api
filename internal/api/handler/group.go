@@ -270,7 +270,7 @@ func (h *GroupHandler) ShareGroup(w http.ResponseWriter, r *http.Request) {
 // @Tags Group
 // @Accept json
 // @Produce json
-// @Param code path string true "Share code"
+// @Param payload body request.JoinGroupPayload true "Join group payload"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 500 {object} response.ErrorResponse "failed to join group"
@@ -278,12 +278,14 @@ func (h *GroupHandler) ShareGroup(w http.ResponseWriter, r *http.Request) {
 func (h *GroupHandler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	code := r.PathValue("code")
-	if code == "" {
-		slog.ErrorContext(ctx, "failed to read code from path")
-		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+	payload, err := request.DecodeJSON[request.JoinGroupPayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode join group payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
 		return
 	}
+
+	// JoinGroupPayload
 
 	authContext, err := domain.GetAuthContext(ctx)
 	if err != nil {
@@ -292,11 +294,10 @@ func (h *GroupHandler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groupID, err := h.GroupService.JoinGroup(ctx, authContext.UserID, code)
+	groupID, err := h.GroupService.JoinGroup(ctx, authContext.UserID, payload.Code)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to join group by share code",
-			slog.Any("error", err),
-			slog.String("code", code))
+			slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to join group")
 		return
 	}
