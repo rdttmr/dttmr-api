@@ -24,6 +24,7 @@ var (
 type Group struct {
 	ID         string    `json:"id"`
 	Name       string    `json:"name"`
+	IsDefault  bool      `json:"is_default"`
 	CreatedAt  time.Time `json:"created_at"`
 	ModifiedAt time.Time `json:"modified_at"`
 }
