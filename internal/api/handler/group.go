@@ -259,7 +259,7 @@ func (h *GroupHandler) ShareGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.InfoContext(ctx, "shared recipe successfully", slog.String("group_id", groupID))
+	slog.InfoContext(ctx, "shared group successfully", slog.String("group_id", groupID))
 	response.JSON(ctx, w, http.StatusOK, invite)
 }
 
@@ -285,12 +285,10 @@ func (h *GroupHandler) JoinGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// JoinGroupPayload
-
 	authContext, err := domain.GetAuthContext(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to join group")
 		return
 	}
 
@@ -319,7 +317,7 @@ func (h *GroupHandler) LeaveGroup(w http.ResponseWriter, r *http.Request) {
 // @Tags Group
 // @Accept json
 // @Produce json
-// @Param code path string true "Group ID"
+// @Param id path string true "Group ID"
 // @Success 204 {object} nil
 // @Error 400 {object} response.ErrorResponse "failed to decode request url"
 // @Error 500 {object} response.ErrorResponse "failed to set default group"
@@ -337,7 +335,7 @@ func (h *GroupHandler) SetDefaultGroup(w http.ResponseWriter, r *http.Request) {
 	authContext, err := domain.GetAuthContext(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to create recipe")
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to set default group")
 		return
 	}
 
