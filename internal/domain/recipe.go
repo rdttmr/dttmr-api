@@ -8,10 +8,11 @@ import (
 )
 
 var (
-	ErrRecipeIDMissing = errors.New("recipe id is required")
-	ErrJoinCodeMissing = errors.New("code is required")
-	ErrUserNotInRecipe = errors.New("user is not in recipe")
-	ErrStaleRecipeIDs  = errors.New("recipe ids out of date")
+	ErrRecipeIDMissing    = errors.New("recipe id is required")
+	ErrJoinCodeMissing    = errors.New("code is required")
+	ErrUserNotInRecipe    = errors.New("user is not in recipe")
+	ErrStaleRecipeIDs     = errors.New("recipe ids out of date")
+	ErrListItemNotInGroup = errors.New("list item is not in group")
 )
 
 type Recipe struct {
@@ -91,6 +92,29 @@ func (s *RecipeService) DeleteRecipe(ctx context.Context, authUserID string, rec
 	}
 
 	return s.repo.DeleteRecipe(ctx, recipeID)
+}
+
+func (s *RecipeService) SetRecipeGroup(ctx context.Context, authUserID string, recipeID string, groupID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if recipeID == "" {
+		return ErrRecipeIDMissing
+	}
+	if groupID == "" {
+		return ErrGroupIDMissing
+	}
+
+	if err := s.userAllowedToAccessRecipe(ctx, authUserID, recipeID); err != nil {
+		return err
+	}
+	if err := s.GroupService.UserHasWritePermission(ctx, authUserID, groupID); err != nil {
+		return err
+	}
+
+	return s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		return s.repo.SetRecipeGroup(ctx, recipeID, groupID)
+	})
 }
 
 func (s *RecipeService) SetRecipeName(ctx context.Context, authUserID string, recipeID string, name string) error {

@@ -40,6 +40,15 @@ func (r *ListRepo) SetListGroup(ctx context.Context, listID string, groupID stri
 	if err != nil {
 		return fmt.Errorf("failed to update list: %w", err)
 	}
+
+	// Update recipe items that are no longer allowed
+	_, err = r.conn(ctx).ExecContext(ctx,
+		"DELETE FROM recipe_items ri USING list_items li, recipes r WHERE ri.list_item_id = li.id AND li.list_id = $1 AND ri.recipe_id = r.id AND r.group_id <> $2",
+		listID, groupID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete orphaned list items from recipe: %w", err)
+	}
 	return nil
 }
 

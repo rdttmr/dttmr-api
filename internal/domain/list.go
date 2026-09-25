@@ -122,7 +122,9 @@ func (s *ListService) SetListGroup(ctx context.Context, authUserID string, listI
 		return err
 	}
 
-	return s.repo.SetListGroup(ctx, listID, groupID)
+	return s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		return s.repo.SetListGroup(ctx, listID, groupID)
+	})
 }
 
 func (s *ListService) SetListName(ctx context.Context, authUserID string, listID string, name string) error {

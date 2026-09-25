@@ -40,6 +40,16 @@ func (r *RecipeRepo) SetRecipeGroup(ctx context.Context, recipeID string, groupI
 	if err != nil {
 		return fmt.Errorf("failed to update recipe: %w", err)
 	}
+
+	// Delete orphaned list items that now no longer fit the group
+	_, err = r.conn(ctx).ExecContext(ctx,
+		"DELETE FROM recipe_items ri USING list_items li, lists l WHERE ri.recipe_id = $1 AND ri.list_item_id = li.id AND li.list_id = l.id AND l.group_id <> $2",
+		recipeID, groupID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete recipe items: %w", err)
+	}
+
 	return nil
 }
 
@@ -137,12 +147,19 @@ func (r *RecipeRepo) LockUserRecipes(ctx context.Context, userID string) ([]stri
 }
 
 func (r *RecipeRepo) AddListItemToRecipe(ctx context.Context, recipeID string, listItemID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO recipe_items (recipe_id, list_item_id) VALUES ($1, $2)",
+	res, err := r.conn(ctx).ExecContext(ctx,
+		"INSERT INTO recipe_items (recipe_id, list_item_id) SELECT r.id, li.id FROM recipes r INNER JOIN list_items li ON li.id = $2 INNER JOIN lists l ON l.id = li.list_id AND l.group_id WHERE r.id = $1 FOR SHARE OF r, l",
 		recipeID, listItemID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to add list item to recipe: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected: %w", err)
+	}
+	if affected < 1 {
+		return domain.ErrListItemNotInGroup
 	}
 
 	return nil
