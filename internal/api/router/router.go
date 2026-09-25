@@ -67,8 +67,6 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("DELETE /lists/{id}", protected(listHandler.DeleteList))
 	apiMux.Handle("POST /lists/{id}/name", protected(listHandler.SetListName))
 	apiMux.Handle("GET /lists", protected(listHandler.GetLists))
-	apiMux.Handle("POST /lists/user", protected(listHandler.AddUserToList))
-	apiMux.Handle("DELETE /lists/user", protected(listHandler.RemoveUserFromList))
 	apiMux.Handle("POST /lists/order", protected(listHandler.OrderLists))
 	apiMux.Handle("POST /lists/items", protected(listHandler.CreateListItem))
 	apiMux.Handle("DELETE /lists/items/{id}", protected(listHandler.DeleteListItem))
@@ -76,7 +74,6 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("POST /lists/items/{id}/title", protected(listHandler.SetListItemTitle))
 	apiMux.Handle("POST /lists/items/{id}/complete", protected(listHandler.SetListItemCompleted))
 	apiMux.Handle("GET /lists/{id}", protected(listHandler.GetListItemsForList))
-	apiMux.Handle("GET /lists/items", protected(listHandler.GetListItemsForUser))
 
 	// Recipes
 	apiMux.Handle("POST /recipes", protected(recipeHandler.CreateRecipe))

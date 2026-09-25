@@ -41,8 +41,6 @@ type ListRepository interface {
 	DeleteList(ctx context.Context, listID string) error
 	SetListName(ctx context.Context, listID string, name string) error
 	GetLists(ctx context.Context, userID string) ([]List, error)
-	AddUserToList(ctx context.Context, listID string, userID string) error
-	RemoveUserFromList(ctx context.Context, listID string, userID string) error
 	OrderLists(ctx context.Context, userID string, listIDs []string) error
 	LockUsersLists(ctx context.Context, userID string) ([]string, error)
 	IsUserInList(ctx context.Context, listID string, userID string) (bool, error)
@@ -53,7 +51,6 @@ type ListRepository interface {
 	SetListItemTitle(ctx context.Context, listItemID string, title string) error
 	SetListItemCompleted(ctx context.Context, listItemID string, isCompleted bool) error
 	GetListItemsForList(ctx context.Context, listID string) ([]ListItem, error)
-	GetListItemsForUser(ctx context.Context, userID string) ([]ListItem, error)
 }
 
 type ListService struct {
@@ -76,21 +73,7 @@ func (s *ListService) CreateList(ctx context.Context, authUserID string, groupID
 		return nil, ErrListNameMissing
 	}
 
-	var list *List
-	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		l, err := s.repo.CreateList(ctx, groupID, name)
-		if err != nil {
-			return err
-		}
-
-		err = s.repo.AddUserToList(ctx, l.ID, authUserID)
-		if err != nil {
-			return err
-		}
-
-		list = l
-		return nil
-	})
+	list, err := s.repo.CreateList(ctx, groupID, name)
 	if err != nil {
 		return nil, err
 	}
@@ -137,42 +120,6 @@ func (s *ListService) GetLists(ctx context.Context, authUserID string) ([]List, 
 	}
 
 	return s.repo.GetLists(ctx, authUserID)
-}
-
-func (s *ListService) AddUserToList(ctx context.Context, authUserID string, listID string, userID string) error {
-	if authUserID == "" {
-		return ErrUserIDMissing
-	}
-	if listID == "" {
-		return ErrListIDMissing
-	}
-	if userID == "" {
-		return ErrUserIDMissing
-	}
-
-	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
-		return err
-	}
-
-	return s.repo.AddUserToList(ctx, listID, userID)
-}
-
-func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string, listID string, userID string) error {
-	if authUserID == "" {
-		return ErrUserIDMissing
-	}
-	if listID == "" {
-		return ErrListIDMissing
-	}
-	if userID == "" {
-		return ErrUserIDMissing
-	}
-
-	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
-		return err
-	}
-
-	return s.repo.RemoveUserFromList(ctx, listID, userID)
 }
 
 func (s *ListService) OrderLists(ctx context.Context, authUserID string, listIDs []string) error {
@@ -304,14 +251,7 @@ func (s *ListService) GetListItemsForList(ctx context.Context, authUserID string
 	return s.repo.GetListItemsForList(ctx, listID)
 }
 
-func (s *ListService) GetListItemsForUser(ctx context.Context, authUserID string) ([]ListItem, error) {
-	if authUserID == "" {
-		return nil, ErrUserIDMissing
-	}
-
-	return s.repo.GetListItemsForUser(ctx, authUserID)
-}
-
+// TODO: We now need to differentiate access & write access
 func (s *ListService) userAllowedToAccessList(ctx context.Context, authUserID string, listID string) error {
 	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
 	if err != nil {

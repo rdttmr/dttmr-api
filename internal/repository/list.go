@@ -73,33 +73,9 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 	return lists, nil
 }
 
-func (r *ListRepo) AddUserToList(ctx context.Context, listID string, userID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"INSERT INTO list_users (list_id, user_id) VALUES ($1, $2)",
-		listID, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to associate user/list: %w", err)
-	}
-
-	return nil
-}
-
-func (r *ListRepo) RemoveUserFromList(ctx context.Context, listID string, userID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"DELETE FROM list_users WHERE list_id = $1 AND user_id = $2",
-		listID, userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to remove user from list: %w", err)
-	}
-
-	return nil
-}
-
 func (r *ListRepo) OrderLists(ctx context.Context, userID string, listIDs []string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
-		"UPDATE list_users AS lu SET position = o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(list_id, idx) WHERE lu.list_id = o.list_id AND lu.user_id=$1",
+		"UPDATE list_positions AS lp SET position = o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(list_id, idx) WHERE lp.list_id = o.list_id AND lp.user_id=$1",
 		userID, listIDs,
 	)
 	if err != nil {
@@ -111,7 +87,7 @@ func (r *ListRepo) OrderLists(ctx context.Context, userID string, listIDs []stri
 
 func (r *ListRepo) LockUsersLists(ctx context.Context, userID string) ([]string, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT list_id FROM list_users WHERE user_id = $1 FOR UPDATE",
+		"SELECT list_id FROM list_positions WHERE user_id = $1 FOR UPDATE",
 		userID,
 	)
 	if err != nil {
@@ -137,7 +113,7 @@ func (r *ListRepo) IsUserInList(ctx context.Context, listID string, userID strin
 	var cnt int
 
 	err := r.conn(ctx).QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM list_users WHERE list_id = $1 AND user_id = $2",
+		"SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = (SELECT l.group_id FROM lists l WHERE l.id = $1) AND gm.user_id = $2",
 		listID, userID,
 	).Scan(&cnt)
 	if err != nil {
@@ -151,7 +127,7 @@ func (r *ListRepo) IsUserInListByItemID(ctx context.Context, listItemID string, 
 	var cnt int
 
 	err := r.conn(ctx).QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM list_users WHERE list_id = (SELECT list_id FROM list_items WHERE id = $1) AND user_id = $2",
+		"SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = (SELECT l.group_id FROM list_items li INNER JOIN lists l ON li.list_id=l.id WHERE li.id = $1) AND gm.user_id = $2",
 		listItemID, userID,
 	).Scan(&cnt)
 	if err != nil {
@@ -240,33 +216,6 @@ func (r *ListRepo) GetListItemsForList(ctx context.Context, listID string) ([]do
 		}
 
 		l.ListID = listID
-		items = append(items, l)
-	}
-
-	return items, nil
-}
-
-func (r *ListRepo) GetListItemsForUser(ctx context.Context, userID string) ([]domain.ListItem, error) {
-	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT id, list_id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id IN (SELECT list_id FROM list_users WHERE user_id = $1) ORDER BY is_completed, modified_at DESC",
-		userID,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get list items for user: %w", err)
-	}
-	defer rows.Close()
-
-	items := make([]domain.ListItem, 0, 128)
-	for rows.Next() {
-		var l domain.ListItem
-		err = rows.Scan(&l.ID, &l.ListID, &l.Title, &l.IsCompleted, &l.CreatedAt, &l.ModifiedAt)
-		if err != nil {
-			return nil, err
-		}
-
 		items = append(items, l)
 	}
 

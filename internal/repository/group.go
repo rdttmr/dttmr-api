@@ -15,7 +15,7 @@ type GroupRepo struct {
 }
 
 func (r *GroupRepo) CreateGroup(ctx context.Context, name string, createdBy string) (*domain.Group, error) {
-	var group domain.Group
+	group := &domain.Group{Name: name}
 
 	err := r.conn(ctx).QueryRowContext(ctx,
 		"INSERT INTO groups (name, created_by) VALUES ($1, $2) RETURNING id, created_at, modified_at",
@@ -25,8 +25,7 @@ func (r *GroupRepo) CreateGroup(ctx context.Context, name string, createdBy stri
 		return nil, fmt.Errorf("failed to create group: %w", err)
 	}
 
-	group.Name = name
-	return &group, nil
+	return group, nil
 }
 
 func (r *GroupRepo) DeleteGroup(ctx context.Context, id string) error {
@@ -110,13 +109,21 @@ func (r *GroupRepo) GetGroupInvite(ctx context.Context, codeHash string) (*domai
 }
 
 func (r *GroupRepo) ConsumeGroupInvite(ctx context.Context, id string, usedBy string) error {
-	_, err := r.conn(ctx).ExecContext(ctx,
-		"UPDATE group_invites SET used_by = $1, consumed_at = NOW() WHERE id = $2",
+	res, err := r.conn(ctx).ExecContext(ctx,
+		"UPDATE group_invites SET used_by = $1, consumed_at = NOW() WHERE id=$2 AND expires_at > NOW() AND consumed_at IS NULL",
 		usedBy, id,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to consume group invite: %w", err)
 	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected: %w", err)
+	}
+	if affected < 1 {
+		return domain.ErrInviteInvalid
+	}
+
 	return nil
 }
 

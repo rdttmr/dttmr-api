@@ -3,13 +3,15 @@ package domain
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 )
 
 var (
-	ErrGroupIDMissing = errors.New("group id is required")
-	ErrUserNotInGroup = errors.New("user is not in group")
-	ErrUserNotOwner   = errors.New("user is not owner")
+	ErrGroupIDMissing         = errors.New("group id is required")
+	ErrUserNotInGroup         = errors.New("user is not in group")
+	ErrUserNotOwner           = errors.New("user is not owner")
+	ErrUserNoWritePermissions = errors.New("user has no permissions to write")
 )
 
 type Group struct {
@@ -78,10 +80,6 @@ func (s *GroupService) DeleteGroup(ctx context.Context, authUserID string, group
 	return s.repo.DeleteGroup(ctx, groupID)
 }
 
-func (s *GroupService) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
-	return s.repo.GetDefaultGroupID(ctx, userID)
-}
-
 func (s *GroupService) GetRoleForGroup(ctx context.Context, groupID string, userID string) (string, error) {
 	if groupID == "" {
 		return "", ErrGroupIDMissing
@@ -93,13 +91,58 @@ func (s *GroupService) GetRoleForGroup(ctx context.Context, groupID string, user
 	return s.repo.GetRoleForGroup(ctx, groupID, userID)
 }
 
-func (s *GroupService) UserIsOwner(ctx context.Context, userID string, groupID string) error {
+func (s *GroupService) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
+	if userID == "" {
+		return "", ErrUserIDMissing
+	}
+
+	return s.repo.GetDefaultGroupID(ctx, userID)
+}
+
+// SetDefaultGroupID should be run in a transaction, TODO: should I start a transaction here? Transactor would be aware and use savepoints
+func (s *GroupService) SetDefaultGroupID(ctx context.Context, userID string, groupID string) error {
+	if userID == "" {
+		return ErrUserIDMissing
+	}
+	if groupID == "" {
+		return ErrGroupIDMissing
+	}
+
+	return s.repo.SetDefaultGroupID(ctx, userID, groupID)
+}
+
+// UserHasRole checks if user has one of the provided roles
+func (s *GroupService) UserHasRole(ctx context.Context, userID string, groupID string, roles []string) (bool, error) {
 	role, err := s.repo.GetRoleForGroup(ctx, groupID, userID)
 	if err != nil {
-		return err
+		if errors.Is(err, ErrUserNotInGroup) {
+			return false, nil
+		}
+		return false, err
 	}
-	if role != "owner" {
+	if !slices.Contains(roles, role) {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (s *GroupService) UserIsOwner(ctx context.Context, userID string, groupID string) error {
+	isOwner, err := s.UserHasRole(ctx, userID, groupID, []string{"owner"})
+	if err != nil {
+		return err
+	} else if !isOwner {
 		return ErrUserNotOwner
+	}
+	return nil
+}
+
+func (s *GroupService) UserHasWritePermission(ctx context.Context, userID, groupID string) error {
+	hasWrite, err := s.UserHasRole(ctx, userID, groupID, []string{"owner", "member"})
+	if err != nil {
+		return err
+	} else if !hasWrite {
+		return ErrUserNoWritePermissions
 	}
 	return nil
 }
