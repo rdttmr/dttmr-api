@@ -47,11 +47,12 @@ type GroupRepository interface {
 }
 
 type GroupService struct {
+	tx   Transactor
 	repo GroupRepository
 }
 
-func NewGroupService(r GroupRepository) *GroupService {
-	return &GroupService{repo: r}
+func NewGroupService(tx Transactor, r GroupRepository) *GroupService {
+	return &GroupService{tx: tx, repo: r}
 }
 
 func (s *GroupService) CreateGroup(ctx context.Context, authUserID string, name string) (*Group, error) {
@@ -62,7 +63,26 @@ func (s *GroupService) CreateGroup(ctx context.Context, authUserID string, name 
 		return nil, ErrNameMissing
 	}
 
-	return s.repo.CreateGroup(ctx, name, authUserID)
+	var group *Group
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		g, err := s.repo.CreateGroup(ctx, name, authUserID)
+		if err != nil {
+			return err
+		}
+
+		err = s.repo.AddUserToGroup(ctx, g.ID, authUserID)
+		if err != nil {
+			return err
+		}
+
+		group = g
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return group, nil
 }
 
 func (s *GroupService) DeleteGroup(ctx context.Context, authUserID string, groupID string) error {
@@ -78,6 +98,28 @@ func (s *GroupService) DeleteGroup(ctx context.Context, authUserID string, group
 	}
 
 	return s.repo.DeleteGroup(ctx, groupID)
+}
+
+func (s *GroupService) AddUserToGroup(ctx context.Context, groupID string, userID string) error {
+	if groupID == "" {
+		return ErrGroupIDMissing
+	}
+	if userID == "" {
+		return ErrUserIDMissing
+	}
+
+	return s.repo.AddUserToGroup(ctx, groupID, userID)
+}
+
+func (s *GroupService) RemoveUserFromGroup(ctx context.Context, groupID string, userID string) error {
+	if groupID == "" {
+		return ErrGroupIDMissing
+	}
+	if userID == "" {
+		return ErrUserIDMissing
+	}
+
+	return s.repo.RemoveUserFromGroup(ctx, groupID, userID)
 }
 
 func (s *GroupService) GetRoleForGroup(ctx context.Context, groupID string, userID string) (string, error) {
@@ -99,7 +141,6 @@ func (s *GroupService) GetDefaultGroupID(ctx context.Context, userID string) (st
 	return s.repo.GetDefaultGroupID(ctx, userID)
 }
 
-// SetDefaultGroupID should be run in a transaction, TODO: should I start a transaction here? Transactor would be aware and use savepoints
 func (s *GroupService) SetDefaultGroupID(ctx context.Context, userID string, groupID string) error {
 	if userID == "" {
 		return ErrUserIDMissing
@@ -108,7 +149,9 @@ func (s *GroupService) SetDefaultGroupID(ctx context.Context, userID string, gro
 		return ErrGroupIDMissing
 	}
 
-	return s.repo.SetDefaultGroupID(ctx, userID, groupID)
+	return s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		return s.repo.SetDefaultGroupID(ctx, userID, groupID)
+	})
 }
 
 // UserHasRole checks if user has one of the provided roles
