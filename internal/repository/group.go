@@ -46,7 +46,7 @@ func (r *GroupRepo) SetGroupName(ctx context.Context, id string, name string) er
 
 func (r *GroupRepo) GetGroups(ctx context.Context, userID string) ([]domain.Group, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT g.id, g.name, gm.is_default, (SELECT COUNT(*) FROM group_members igm WHERE igm.group_id = g.id), g.created_at, g.modified_at FROM groups AS g INNER JOIN group_members gm ON g.id=gm.group_id WHERE gm.user_id = $1",
+		"SELECT g.id, g.name, gm.is_default, gm.role, (SELECT COUNT(*) FROM group_members igm WHERE igm.group_id = g.id), g.created_at, g.modified_at FROM groups AS g INNER JOIN group_members gm ON g.id=gm.group_id WHERE gm.user_id = $1",
 		userID,
 	)
 	if err != nil {
@@ -60,7 +60,7 @@ func (r *GroupRepo) GetGroups(ctx context.Context, userID string) ([]domain.Grou
 	groups := make([]domain.Group, 0, 8)
 	for rows.Next() {
 		var g domain.Group
-		err = rows.Scan(&g.ID, &g.Name, &g.IsDefault, &g.MemberCount, &g.CreatedAt, &g.ModifiedAt)
+		err = rows.Scan(&g.ID, &g.Name, &g.IsDefault, &g.Role, &g.MemberCount, &g.CreatedAt, &g.ModifiedAt)
 		if err != nil {
 			return nil, err
 		}
