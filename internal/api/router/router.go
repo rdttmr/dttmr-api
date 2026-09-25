@@ -24,9 +24,9 @@ func NewMux(cfg Config) http.Handler {
 	authService := domain.NewAuthService(store.Auth, []byte(cfg.JWTSecret))
 	inviteService := domain.NewInviteService(store.Invite)
 	userService := domain.NewUserService(store.User)
-	groupService := domain.NewGroupService(store.Group)
+	groupService := domain.NewGroupService(store, store.Group)
 	registrationService := domain.NewRegistrationService(store, userService, groupService, inviteService)
-	listService := domain.NewListService(store, store.List)
+	listService := domain.NewListService(store, store.List, groupService)
 	recipeService := domain.NewRecipeService(store, store.Recipe)
 	exerciseService := domain.NewExerciseService(store.Exercise)
 
