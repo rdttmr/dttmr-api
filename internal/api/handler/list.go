@@ -10,13 +10,18 @@ import (
 	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 )
 
+var (
+	ErrNoAccess = errors.New("no access")
+)
+
 type ListHandler struct {
-	ListService *domain.ListService
-	UserService *domain.UserService
+	ListService  *domain.ListService
+	UserService  *domain.UserService
+	GroupService *domain.GroupService
 }
 
-func NewListHandler(listService *domain.ListService, userService *domain.UserService) *ListHandler {
-	return &ListHandler{ListService: listService, UserService: userService}
+func NewListHandler(listService *domain.ListService, userService *domain.UserService, groupService *domain.GroupService) *ListHandler {
+	return &ListHandler{ListService: listService, UserService: userService, GroupService: groupService}
 }
 
 // CreateList handles the creation of a list
@@ -48,10 +53,18 @@ func (h *ListHandler) CreateList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.Name)
+	list, err := h.ListService.CreateList(ctx, authContext.UserID, payload.GroupID, payload.Name)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
+		if errors.Is(err, domain.ErrUserNoWritePermissions) {
+			slog.WarnContext(ctx, "user has no write permission",
+				slog.Any("error", err),
+				slog.String("user_id", authContext.UserID),
+				slog.String("group_id", payload.GroupID))
+			response.Error(ctx, w, http.StatusForbidden, "user has no write permission")
+		} else {
+			slog.ErrorContext(ctx, "failed to create list", slog.Any("error", err))
+			response.Error(ctx, w, http.StatusInternalServerError, "failed to create list")
+		}
 		return
 	}
 
@@ -96,6 +109,56 @@ func (h *ListHandler) DeleteList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.InfoContext(ctx, "deleted list successfully", slog.String("list_id", listID))
+	response.Status(w, http.StatusNoContent)
+}
+
+// SetListGroup handles updating the group of a list
+//
+// @Summary Updates group of list
+// @Description Update an existing list, moving it to a different group
+// @Tags List
+// @Accept json
+// @Produce json
+// @Param id path string true "List ID"
+// @Param payload body request.SetListGroupPayload true "Update list group payload"
+// @Success 204 {object} nil
+// @Error 400 {object} response.ErrorResponse "failed to decode request url"
+// @Error 400 {object} response.ErrorResponse "failed to decode request body"
+// @Error 401 {object} response.ErrorResponse "not authorized"
+// @Error 500 {object} response.ErrorResponse "failed to set list group"
+// @Router /lists/{id}/group [post]
+func (h *ListHandler) SetListGroup(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	listID := r.PathValue("id")
+	if listID == "" {
+		slog.ErrorContext(ctx, "failed to read list id from path")
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request url")
+		return
+	}
+
+	payload, err := request.DecodeJSON[request.SetListGroupPayload](r)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to decode set list group payload", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
+		return
+	}
+
+	authContext, err := domain.GetAuthContext(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
+		return
+	}
+
+	err = h.ListService.SetListGroup(ctx, authContext.UserID, listID, payload.GroupID)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to set list group", slog.Any("error", err))
+		response.Error(ctx, w, http.StatusInternalServerError, "failed to set list group")
+		return
+	}
+
+	slog.InfoContext(ctx, "updated list group successfully", slog.String("list_id", listID))
 	response.Status(w, http.StatusNoContent)
 }
 
@@ -179,108 +242,6 @@ func (h *ListHandler) GetLists(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(ctx, w, http.StatusOK, lists)
-}
-
-// AddUserToList handles the user association to a list
-//
-// @Summary Add a user to the given list
-// @Description Associate a user with a list
-// @Tags List
-// @Accept json
-// @Produce json
-// @Param payload body request.AddUserToListPayload true "Add user to list payload"
-// @Success 204 {object} nil
-// @Error 400 {object} response.ErrorResponse "failed to decode request body"
-// @Error 500 {object} response.ErrorResponse "failed to find email in system"
-// @Error 500 {object} response.ErrorResponse "failed to add user to list"
-// @Router /lists/user [post]
-func (h *ListHandler) AddUserToList(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	payload, err := request.DecodeJSON[request.AddUserToListPayload](r)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to decode add user to list payload", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
-		return
-	}
-
-	authContext, err := domain.GetAuthContext(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to add user to list")
-		return
-	}
-
-	user, err := h.UserService.GetUserByEmail(ctx, payload.Email)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to get user by email", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to find email in system")
-		return
-	}
-
-	err = h.ListService.AddUserToList(ctx, authContext.UserID, payload.ListID, user.ID)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to add user to list", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to add user to list")
-		return
-	}
-
-	slog.InfoContext(ctx, "added user to list successfully",
-		slog.String("list_id", payload.ListID),
-		slog.String("email", user.Email),
-	)
-	response.Status(w, http.StatusNoContent)
-}
-
-// RemoveUserFromList handles the removal of a user association to a list
-//
-// @Summary Remove a user to the given list
-// @Description Unassociate a user from a list
-// @Tags List
-// @Accept json
-// @Produce json
-// @Param payload body request.RemoveUserFromListPayload true "Remove user from list payload"
-// @Success 204 {object} nil
-// @Error 400 {object} response.ErrorResponse "failed to decode request body"
-// @Error 500 {object} response.ErrorResponse "failed to find email in system"
-// @Error 500 {object} response.ErrorResponse "failed to remove user from list"
-// @Router /lists/user [delete]
-func (h *ListHandler) RemoveUserFromList(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	payload, err := request.DecodeJSON[request.RemoveUserFromListPayload](r)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to decode remove user from list payload", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusBadRequest, "failed to decode request body")
-		return
-	}
-
-	authContext, err := domain.GetAuthContext(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to remove user from list")
-		return
-	}
-
-	user, err := h.UserService.GetUserByEmail(ctx, payload.Email)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to get user by email", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to find email in system")
-		return
-	}
-
-	err = h.ListService.RemoveUserFromList(ctx, authContext.UserID, payload.ListID, user.ID)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to remove user from list", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to remove user from list")
-		return
-	}
-
-	slog.InfoContext(ctx, "removed user from list successfully",
-		slog.String("list_id", payload.ListID),
-		slog.String("email", user.Email),
-	)
-	response.Status(w, http.StatusNoContent)
 }
 
 // OrderLists handles re-ordering a users lists
@@ -581,38 +542,6 @@ func (h *ListHandler) GetListItemsForList(w http.ResponseWriter, r *http.Request
 	}
 
 	items, err := h.ListService.GetListItemsForList(ctx, authContext.UserID, listID)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to read list items", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")
-		return
-	}
-
-	response.JSON(ctx, w, http.StatusOK, items)
-}
-
-// GetListItemsForUser handles return all list items of a list
-//
-// @Summary Returns all items from a list
-// @Description Retrieve all list items of a list
-// @Tags List
-// @Accept json
-// @Produce json
-// @Success 200 {object} []domain.ListItem
-// @Error 400 {object} response.ErrorResponse "failed to decode request url"
-// @Error 401 {object} response.ErrorResponse "not authorized"
-// @Error 500 {object} response.ErrorResponse "failed to read list items"
-// @Router /lists/items [get]
-func (h *ListHandler) GetListItemsForUser(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	authContext, err := domain.GetAuthContext(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to get auth context", slog.Any("error", err))
-		response.Error(ctx, w, http.StatusUnauthorized, "not authorized")
-		return
-	}
-
-	items, err := h.ListService.GetListItemsForUser(ctx, authContext.UserID)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to read list items", slog.Any("error", err))
 		response.Error(ctx, w, http.StatusInternalServerError, "failed to read list items")

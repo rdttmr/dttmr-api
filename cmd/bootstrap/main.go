@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -72,8 +73,26 @@ func main() {
 func seedAdminUser(db *sql.DB, email string, name string, password string) error {
 	store := repository.NewStore(db)
 	userService := domain.NewUserService(store.User)
+	groupService := domain.NewGroupService(store, store.Group)
 
-	_, err := userService.CreateUser(context.Background(), email, name, password)
+	err := store.WithinTx(context.Background(), func(ctx context.Context) error {
+		user, err := userService.CreateUser(ctx, email, name, password)
+		if err != nil {
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+
+		group, err := groupService.CreateGroup(ctx, user.ID, "Personal")
+		if err != nil {
+			return fmt.Errorf("failed to create group: %w", err)
+		}
+
+		err = groupService.SetDefaultGroupID(ctx, user.ID, group.ID)
+		if err != nil {
+			return fmt.Errorf("failed to set default group: %w", err)
+		}
+
+		return nil
+	})
 	return err
 }
 

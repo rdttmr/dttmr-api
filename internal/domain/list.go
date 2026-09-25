@@ -18,12 +18,13 @@ var (
 
 type List struct {
 	ID             string    `json:"id"`
+	GroupID        string    `json:"group_id"`
 	Name           string    `json:"name"`
-	CreatedAt      time.Time `json:"created_at"`
-	ModifiedAt     time.Time `json:"modified_at"`
 	TotalItems     int       `json:"total_items"`
 	CompletedItems int       `json:"completed_items"`
 	Position       int       `json:"position"`
+	CreatedAt      time.Time `json:"created_at"`
+	ModifiedAt     time.Time `json:"modified_at"`
 }
 
 type ListItem struct {
@@ -36,12 +37,11 @@ type ListItem struct {
 }
 
 type ListRepository interface {
-	CreateList(ctx context.Context, name string) (*List, error)
+	CreateList(ctx context.Context, groupID string, name string) (*List, error)
 	DeleteList(ctx context.Context, listID string) error
+	SetListGroup(ctx context.Context, listID string, groupID string) error
 	SetListName(ctx context.Context, listID string, name string) error
 	GetLists(ctx context.Context, userID string) ([]List, error)
-	AddUserToList(ctx context.Context, listID string, userID string) error
-	RemoveUserFromList(ctx context.Context, listID string, userID string) error
 	OrderLists(ctx context.Context, userID string, listIDs []string) error
 	LockUsersLists(ctx context.Context, userID string) ([]string, error)
 	IsUserInList(ctx context.Context, listID string, userID string) (bool, error)
@@ -52,46 +52,41 @@ type ListRepository interface {
 	SetListItemTitle(ctx context.Context, listItemID string, title string) error
 	SetListItemCompleted(ctx context.Context, listItemID string, isCompleted bool) error
 	GetListItemsForList(ctx context.Context, listID string) ([]ListItem, error)
-	GetListItemsForUser(ctx context.Context, userID string) ([]ListItem, error)
 }
 
 type ListService struct {
-	tx   Transactor
-	repo ListRepository
+	tx           Transactor
+	repo         ListRepository
+	GroupService *GroupService
 }
 
-func NewListService(tx Transactor, r ListRepository) *ListService {
-	return &ListService{tx: tx, repo: r}
+func NewListService(tx Transactor, r ListRepository, groupService *GroupService) *ListService {
+	return &ListService{tx: tx, repo: r, GroupService: groupService}
 }
 
-func (s *ListService) CreateList(ctx context.Context, authUserID string, name string) (*List, error) {
+func (s *ListService) CreateList(ctx context.Context, authUserID string, groupID string, name string) (*List, error) {
 	if authUserID == "" {
 		return nil, ErrUserIDMissing
 	}
 	if name == "" {
 		return nil, ErrListNameMissing
 	}
-
-	var list *List
-	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		l, err := s.repo.CreateList(ctx, name)
+	if groupID == "" {
+		var err error
+		groupID, err = s.GroupService.GetDefaultGroupID(ctx, authUserID)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		err = s.repo.AddUserToList(ctx, l.ID, authUserID)
-		if err != nil {
-			return err
+		if groupID == "" {
+			return nil, ErrGroupIDMissing
 		}
+	}
 
-		list = l
-		return nil
-	})
-	if err != nil {
+	if err := s.GroupService.UserHasWritePermission(ctx, authUserID, groupID); err != nil {
 		return nil, err
 	}
 
-	return list, nil
+	return s.repo.CreateList(ctx, groupID, name)
 }
 
 func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID string) error {
@@ -107,6 +102,29 @@ func (s *ListService) DeleteList(ctx context.Context, authUserID string, listID 
 	}
 
 	return s.repo.DeleteList(ctx, listID)
+}
+
+func (s *ListService) SetListGroup(ctx context.Context, authUserID string, listID string, groupID string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
+	if listID == "" {
+		return ErrListIDMissing
+	}
+	if groupID == "" {
+		return ErrGroupIDMissing
+	}
+
+	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
+		return err
+	}
+	if err := s.GroupService.UserHasWritePermission(ctx, authUserID, groupID); err != nil {
+		return err
+	}
+
+	return s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		return s.repo.SetListGroup(ctx, listID, groupID)
+	})
 }
 
 func (s *ListService) SetListName(ctx context.Context, authUserID string, listID string, name string) error {
@@ -133,42 +151,6 @@ func (s *ListService) GetLists(ctx context.Context, authUserID string) ([]List, 
 	}
 
 	return s.repo.GetLists(ctx, authUserID)
-}
-
-func (s *ListService) AddUserToList(ctx context.Context, authUserID string, listID string, userID string) error {
-	if authUserID == "" {
-		return ErrUserIDMissing
-	}
-	if listID == "" {
-		return ErrListIDMissing
-	}
-	if userID == "" {
-		return ErrUserIDMissing
-	}
-
-	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
-		return err
-	}
-
-	return s.repo.AddUserToList(ctx, listID, userID)
-}
-
-func (s *ListService) RemoveUserFromList(ctx context.Context, authUserID string, listID string, userID string) error {
-	if authUserID == "" {
-		return ErrUserIDMissing
-	}
-	if listID == "" {
-		return ErrListIDMissing
-	}
-	if userID == "" {
-		return ErrUserIDMissing
-	}
-
-	if err := s.userAllowedToAccessList(ctx, authUserID, listID); err != nil {
-		return err
-	}
-
-	return s.repo.RemoveUserFromList(ctx, listID, userID)
 }
 
 func (s *ListService) OrderLists(ctx context.Context, authUserID string, listIDs []string) error {
@@ -300,14 +282,7 @@ func (s *ListService) GetListItemsForList(ctx context.Context, authUserID string
 	return s.repo.GetListItemsForList(ctx, listID)
 }
 
-func (s *ListService) GetListItemsForUser(ctx context.Context, authUserID string) ([]ListItem, error) {
-	if authUserID == "" {
-		return nil, ErrUserIDMissing
-	}
-
-	return s.repo.GetListItemsForUser(ctx, authUserID)
-}
-
+// TODO: We now need to differentiate access & write access
 func (s *ListService) userAllowedToAccessList(ctx context.Context, authUserID string, listID string) error {
 	inList, err := s.repo.IsUserInList(ctx, listID, authUserID)
 	if err != nil {
