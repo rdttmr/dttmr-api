@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrGroupIDMissing         = errors.New("group id is required")
+	ErrMustHaveOneGroup       = errors.New("user must have at least one group")
 	ErrRoleMissing            = errors.New("role is required")
 	ErrUserNotInGroup         = errors.New("user is not in group")
 	ErrUserNotOwner           = errors.New("user is not owner")
@@ -105,6 +106,14 @@ func (s *GroupService) DeleteGroup(ctx context.Context, authUserID string, group
 
 	if err := s.UserIsOwner(ctx, authUserID, groupID); err != nil {
 		return err
+	}
+
+	groups, err := s.GetGroups(ctx, authUserID)
+	if err != nil {
+		return err
+	}
+	if len(groups) < 2 {
+		return ErrMustHaveOneGroup
 	}
 
 	return s.repo.DeleteGroup(ctx, groupID)
