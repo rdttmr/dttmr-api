@@ -86,6 +86,8 @@ func (s *GroupService) CreateGroup(ctx context.Context, authUserID string, name 
 			return err
 		}
 
+		g.IsDefault = false
+		g.MemberCount = 1
 		group = g
 		return nil
 	})
