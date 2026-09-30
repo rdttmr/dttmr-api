@@ -47,7 +47,7 @@ func ParseMetric(s string) (Metric, error) {
 func (m Metric) MarshalText() ([]byte, error) {
 	s := m.String()
 	if s == "" {
-		return nil, fmt.Errorf("metric: cannot marshal value %d", int(e))
+		return nil, fmt.Errorf("metric: cannot marshal value %d", int(m))
 	}
 	return []byte(s), nil
 }
