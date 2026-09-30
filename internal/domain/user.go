@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -13,6 +14,7 @@ var (
 	ErrEmailMissing    = errors.New("email is required")
 	ErrNameMissing     = errors.New("name is required")
 	ErrPasswordMissing = errors.New("password is required")
+	ErrPasswordTooLong = errors.New("password is too long")
 )
 
 type User struct {
@@ -50,10 +52,13 @@ func (s *UserService) CreateUser(ctx context.Context, email string, name string,
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
+		if errors.Is(err, bcrypt.ErrPasswordTooLong) {
+			return nil, ErrPasswordTooLong
+		}
 		return nil, err
 	}
 
-	return s.repo.CreateUser(ctx, email, name, string(hash))
+	return s.repo.CreateUser(ctx, strings.ToLower(email), name, string(hash))
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
@@ -74,6 +79,9 @@ func (s *UserService) ChangePassword(ctx context.Context, userID string, passwor
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
+		if errors.Is(err, bcrypt.ErrPasswordTooLong) {
+			return ErrPasswordTooLong
+		}
 		return err
 	}
 

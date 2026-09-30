@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -70,7 +71,7 @@ func NewAuthService(tx Transactor, r AuthRepository, jwtSecret []byte) *AuthServ
 }
 
 func (s *AuthService) Authenticate(ctx context.Context, email string, password string) (*AuthUser, error) {
-	user, err := s.repo.GetUserByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, strings.ToLower(email))
 	if err != nil {
 		if errors.Is(err, ErrEmailNotFound) {
 			// compare dummy, so execution time does not leak if email exists
