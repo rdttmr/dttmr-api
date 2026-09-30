@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	ErrEmailNotFound = errors.New("email not found")
-	ErrPasswordWrong = errors.New("password is wrong")
+	ErrEmailNotFound        = errors.New("email not found")
+	ErrPasswordWrong        = errors.New("password is wrong")
+	ErrEmailOrPasswordWrong = errors.New("email or password wrong")
 )
 
 type AuthRepository interface {
@@ -71,15 +72,20 @@ func NewAuthService(tx Transactor, r AuthRepository, jwtSecret []byte) *AuthServ
 func (s *AuthService) Authenticate(ctx context.Context, email string, password string) (*AuthUser, error) {
 	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return user, err
+		if errors.Is(err, ErrEmailNotFound) {
+			// compare dummy, so execution time does not leak if email exists
+			_ = bcrypt.CompareHashAndPassword([]byte("dummy"), []byte("dummy_hash"))
+			return nil, ErrEmailOrPasswordWrong
+		}
+		return nil, err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return user, ErrPasswordWrong
+			return nil, ErrEmailOrPasswordWrong
 		}
-		return user, err
+		return nil, err
 	}
 
 	return user, nil
