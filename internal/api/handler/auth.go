@@ -44,10 +44,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.AuthService.Login(ctx, payload.Email, payload.Password)
 	if err != nil {
-		if errors.Is(err, domain.ErrEmailNotFound) {
-			response.Error(ctx, w, http.StatusUnauthorized, "email not found")
-		} else if errors.Is(err, domain.ErrPasswordWrong) {
-			response.Error(ctx, w, http.StatusUnauthorized, "password is wrong")
+		if errors.Is(err, domain.ErrEmailOrPasswordWrong) {
+			response.Error(ctx, w, http.StatusUnauthorized, "email or password wrong")
 		} else {
 			response.Error(ctx, w, http.StatusInternalServerError, "failed to login")
 		}
