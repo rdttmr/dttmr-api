@@ -9,7 +9,6 @@ import (
 
 var (
 	ErrGroupIDMissing         = errors.New("group id is required")
-	ErrMustHaveOneGroup       = errors.New("user must have at least one group")
 	ErrGroupHasMembers        = errors.New("group with more than on member must not be deleted")
 	ErrGroupIsDefault         = errors.New("group is default")
 	ErrOwnerCantLeave         = errors.New("group owner must not leave")
