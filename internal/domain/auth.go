@@ -29,6 +29,7 @@ type AuthRepository interface {
 }
 
 type AuthService struct {
+	tx        Transactor
 	repo      AuthRepository
 	jwtSecret []byte
 }
@@ -63,8 +64,8 @@ func GetAuthContext(ctx context.Context) (*AuthContext, error) {
 	return ac, nil
 }
 
-func NewAuthService(r AuthRepository, jwtSecret []byte) *AuthService {
-	return &AuthService{repo: r, jwtSecret: jwtSecret}
+func NewAuthService(tx Transactor, r AuthRepository, jwtSecret []byte) *AuthService {
+	return &AuthService{tx: tx, repo: r, jwtSecret: jwtSecret}
 }
 
 func (s *AuthService) Authenticate(ctx context.Context, email string, password string) (*AuthUser, error) {
@@ -95,18 +96,27 @@ func (s *AuthService) Login(ctx context.Context, email string, password string) 
 
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
 	tokenHash := hashToken(refreshToken)
+	var tokenPair TokenPair
 
-	userID, err := s.repo.ConsumeRefreshToken(ctx, tokenHash)
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		userID, err := s.repo.ConsumeRefreshToken(ctx, tokenHash)
+		if err != nil {
+			return err
+		}
+
+		authUser, err := s.repo.GetUserById(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		tokenPair, err = s.issueTokens(ctx, authUser)
+		return err
+	})
 	if err != nil {
 		return TokenPair{}, err
 	}
 
-	authUser, err := s.repo.GetUserById(ctx, userID)
-	if err != nil {
-		return TokenPair{}, err
-	}
-
-	return s.issueTokens(ctx, authUser)
+	return tokenPair, nil
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
