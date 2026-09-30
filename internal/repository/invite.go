@@ -21,7 +21,7 @@ func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, cod
 		inviterUserID, code, expiresAt,
 	).Scan(&id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert invites: %w", err)
+		return nil, fmt.Errorf("failed to insert invite: %w", err)
 	}
 
 	return &domain.Invite{
@@ -95,9 +95,6 @@ func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, 
 		userID, offset, count,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get invites: %w", err)
 	}
 	defer rows.Close()
@@ -134,29 +131,12 @@ func (r *InviteRepo) CountInvites(ctx context.Context, userID string) (int, erro
 
 func (r *InviteRepo) CountInvitesStructured(ctx context.Context, userID string) (*domain.InviteCounts, error) {
 	var counts domain.InviteCounts
-	conn := r.conn(ctx)
-	err := conn.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1 AND expires_at > NOW() AND consumed_at IS NULL",
+	err := r.conn(ctx).QueryRowContext(ctx,
+		"SELECT COUNT(*) FILTER (WHERE expires_at > NOW() AND consumed_at IS NULL), COUNT(*) FILTER (WHERE expires_at <= NOW() AND consumed_at IS NULL), COUNT(consumed_at) FROM invites WHERE inviter_user_id = $1",
 		userID,
-	).Scan(&counts.Active)
+	).Scan(&counts.Active, &counts.Expired, &counts.Used)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count active invites: %w", err)
-	}
-
-	err = conn.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1 AND expires_at < NOW() AND consumed_at IS NULL",
-		userID,
-	).Scan(&counts.Expired)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count expired invites: %w", err)
-	}
-
-	err = conn.QueryRowContext(ctx,
-		"SELECT COUNT(consumed_at) FROM invites WHERE inviter_user_id=$1",
-		userID,
-	).Scan(&counts.Used)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count consumed invites: %w", err)
+		return nil, fmt.Errorf("failed to count structured invites: %w", err)
 	}
 
 	return &counts, nil
