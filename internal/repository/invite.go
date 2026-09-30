@@ -91,7 +91,7 @@ func (r *InviteRepo) GetInvite(ctx context.Context, code string) (*domain.Invite
 
 func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, count int) ([]domain.Invite, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT id, code, expires_at, consumed_at FROM invites WHERE inviter_user_id=$1 ORDER BY created_at DESC OFFSET $2 LIMIT $3",
+		"SELECT i.id, u.name, i.expires_at, i.consumed_at FROM invites i LEFT JOIN users u ON invitee_user_id=u.id WHERE inviter_user_id=$1 ORDER BY created_at DESC OFFSET $2 LIMIT $3",
 		userID, offset, count,
 	)
 	if err != nil {
@@ -102,7 +102,7 @@ func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, 
 	var invites []domain.Invite
 	for rows.Next() {
 		var i domain.Invite
-		err = rows.Scan(&i.ID, &i.Code, &i.ExpiresAt, &i.ConsumedAt)
+		err = rows.Scan(&i.ID, &i.UsedBy, &i.ExpiresAt, &i.ConsumedAt)
 		if err != nil {
 			return nil, err
 		}

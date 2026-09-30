@@ -16,7 +16,8 @@ var (
 
 type Invite struct {
 	ID         string     `json:"id"`
-	Code       string     `json:"code"`
+	Code       string     `json:"code,omitempty"`
+	UsedBy     string     `json:"used_by,omitempty"`
 	ExpiresAt  time.Time  `json:"expires_at"`
 	ConsumedAt *time.Time `json:"consumed_at"`
 }
