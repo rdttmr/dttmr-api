@@ -49,7 +49,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to register user",
 			slog.Any("error", err),
-			slog.String("invite_code", payload.InviteCode),
 			slog.String("email", payload.Email))
 
 		if errors.Is(err, domain.ErrInviteExpired) {
