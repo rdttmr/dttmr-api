@@ -30,6 +30,17 @@ type AuthRepository interface {
 	RevokeRefreshTokens(ctx context.Context, userID string) error
 }
 
+var dummyPassword = "dummy"
+var dummyPasswordHash = mustGenerateHash(dummyPassword)
+
+func mustGenerateHash(password string) []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		panic(fmt.Sprintf("generate dummy password hash: %v", err))
+	}
+	return hash
+}
+
 type AuthService struct {
 	tx        Transactor
 	repo      AuthRepository
@@ -75,7 +86,7 @@ func (s *AuthService) Authenticate(ctx context.Context, email string, password s
 	if err != nil {
 		if errors.Is(err, ErrEmailNotFound) {
 			// compare dummy, so execution time does not leak if email exists
-			_ = bcrypt.CompareHashAndPassword([]byte("dummy"), []byte("dummy_hash"))
+			_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(dummyPassword))
 			return nil, ErrEmailOrPasswordWrong
 		}
 		return nil, err
@@ -150,17 +161,17 @@ const AuthContextKey = contextKey("auth")
 func (s *AuthService) issueTokens(ctx context.Context, authUser *AuthUser) (TokenPair, error) {
 	accessToken, err := s.GenerateAccessToken(authUser)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("failed to issue access token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to issue access token: %w", err)
 	}
 
 	refreshToken, err := s.GenerateRefreshToken()
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("failed to issue refresh token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to issue refresh token: %w", err)
 	}
 
 	err = s.repo.StoreRefreshToken(ctx, authUser.ID, hashToken(refreshToken), time.Now().Add(time.Hour*24*7))
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("failed to store refresh token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to store refresh token: %w", err)
 	}
 
 	return TokenPair{
@@ -205,7 +216,7 @@ func (s *AuthService) ParseAccessToken(ctx context.Context, tokenString string) 
 		return s.jwtSecret, nil
 	})
 	if err != nil || !token.Valid {
-		slog.ErrorContext(ctx, "invalid or expired token", slog.Any("token", token))
+		slog.ErrorContext(ctx, "invalid or expired token", slog.Any("error", err))
 		return nil, err
 	}
 
