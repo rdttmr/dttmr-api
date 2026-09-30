@@ -33,6 +33,9 @@ var equipmentNames = [...]string{
 var equipmentValues = func() map[string]Equipment {
 	m := make(map[string]Equipment, len(equipmentNames))
 	for i, name := range equipmentNames {
+		if name == "" {
+			continue
+		}
 		m[name] = Equipment(i)
 	}
 	return m

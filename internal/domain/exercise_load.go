@@ -22,6 +22,9 @@ var loadNames = [...]string{
 var loadValues = func() map[string]Load {
 	m := make(map[string]Load, len(loadNames))
 	for i, name := range loadNames {
+		if name == "" {
+			continue
+		}
 		m[name] = Load(i)
 	}
 	return m

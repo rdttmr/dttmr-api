@@ -22,6 +22,9 @@ var metricNames = [...]string{
 var metricValues = func() map[string]Metric {
 	m := make(map[string]Metric, len(metricNames))
 	for i, name := range metricNames {
+		if name == "" {
+			continue
+		}
 		m[name] = Metric(i)
 	}
 	return m
