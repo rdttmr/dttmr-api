@@ -2,15 +2,13 @@ package repository
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"git.dittmar.dev/robin/dttmr-api/internal/domain"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var m = pgtype.NewMap()
+var pgTypes = pgtype.NewMap()
 
 type ExerciseRepo struct {
 	Repo
@@ -32,9 +30,6 @@ func (r *ExerciseRepo) GetExercises(ctx context.Context, offset int, count int) 
 		offset, count,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get exercises: %w", err)
 	}
 	defer rows.Close()
@@ -42,7 +37,7 @@ func (r *ExerciseRepo) GetExercises(ctx context.Context, offset int, count int) 
 	exercises := make([]domain.Exercise, 0, count)
 	for rows.Next() {
 		var e domain.Exercise
-		err = rows.Scan(&e.ID, &e.Name, (*domain.EquipmentSet)(&e.Equipment), &e.Metric, &e.Load, m.SQLScanner(&e.Tags), &e.Notes, &e.ModifiedAt)
+		err = rows.Scan(&e.ID, &e.Name, (*domain.EquipmentSet)(&e.Equipment), &e.Metric, &e.Load, pgTypes.SQLScanner(&e.Tags), &e.Notes, &e.ModifiedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +54,7 @@ func (r *ExerciseRepo) GetExercises(ctx context.Context, offset int, count int) 
 func (r *ExerciseRepo) CountExercises(ctx context.Context) (int, error) {
 	var count int
 	err := r.conn(ctx).QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM exercises",
+		"SELECT COUNT(*) FROM exercises WHERE user_id IS NULL",
 	).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count exercises: %w", err)
