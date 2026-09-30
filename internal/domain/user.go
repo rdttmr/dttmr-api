@@ -89,5 +89,5 @@ func (s *UserService) ChangePassword(ctx context.Context, userID string, passwor
 }
 
 func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	return s.repo.GetUserByEmail(ctx, email)
+	return s.repo.GetUserByEmail(ctx, strings.ToLower(email))
 }
