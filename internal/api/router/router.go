@@ -71,6 +71,7 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("GET /groups/{id}/members", protected(groupHandler.GetGroupMembers))
 	apiMux.Handle("POST /groups/{id}/share", protected(groupHandler.ShareGroup))
 	apiMux.Handle("POST /groups/join", protected(groupHandler.JoinGroup))
+	apiMux.Handle("POST /groups/{id}/leave", protected(groupHandler.LeaveGroup))
 	apiMux.Handle("POST /groups/{id}/default", protected(groupHandler.SetDefaultGroup))
 
 	// Lists
