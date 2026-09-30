@@ -30,8 +30,7 @@ type AuthRepository interface {
 	RevokeRefreshTokens(ctx context.Context, userID string) error
 }
 
-var dummyPassword = "dummy"
-var dummyPasswordHash = mustGenerateHash(dummyPassword)
+var dummyPasswordHash = mustGenerateHash("dummy")
 
 func mustGenerateHash(password string) []byte {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -86,7 +85,7 @@ func (s *AuthService) Authenticate(ctx context.Context, email string, password s
 	if err != nil {
 		if errors.Is(err, ErrEmailNotFound) {
 			// compare dummy, so execution time does not leak if email exists
-			_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(dummyPassword))
+			_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(password))
 			return nil, ErrEmailOrPasswordWrong
 		}
 		return nil, err
