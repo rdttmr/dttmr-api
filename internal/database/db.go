@@ -22,6 +22,7 @@ func New(ctx context.Context, connURL string) (*sql.DB, error) {
 	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	if err := db.PingContext(ctx); err != nil {
+		db.Close()
 		return nil, fmt.Errorf("database unreachable: %w", err)
 	}
 
