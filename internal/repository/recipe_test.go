@@ -45,7 +45,7 @@ func newRecipeRepo(t *testing.T) (*RecipeRepo, sqlmock.Sqlmock) {
 const (
 	insertRecipeQuery       = "INSERT INTO recipes (name, group_id) VALUES ($1, $2) RETURNING id, created_at, modified_at"
 	deleteRecipeQuery       = "DELETE FROM recipes WHERE id = $1"
-	updateRecipeGroupQuery  = "UPDATE recipes SET group_id = $1 WHERE id = $2"
+	updateRecipeGroupQuery  = "UPDATE recipes SET group_id = $1, modified_at = NOW() WHERE id = $2"
 	deleteOrphanItemsQuery  = "DELETE FROM recipe_items ri USING list_items li, lists l WHERE ri.recipe_id = $1 AND ri.list_item_id = li.id AND li.list_id = l.id AND l.group_id <> $2"
 	updateRecipeNameQuery   = "UPDATE recipes SET name = $1, modified_at = NOW() WHERE id = $2"
 	selectRecipesQuery      = "SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at"
