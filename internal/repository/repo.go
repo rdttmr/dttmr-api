@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"sync/atomic"
 )
@@ -64,8 +65,8 @@ func (t *Transactor) withinSavepoint(ctx context.Context, tx *sql.Tx, fn func(co
 	}
 
 	if err := fn(ctx); err != nil {
-		_, _ = tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT "+name)
-		return err
+		_, rbErr := tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT "+name)
+		return errors.Join(err, rbErr)
 	}
 
 	_, err := tx.ExecContext(ctx, "RELEASE SAVEPOINT "+name)

@@ -300,3 +300,55 @@ func TestTransactor_WithinTxNested(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestTransactor_WithinTxPanic(t *testing.T) {
+	t.Run("panic rolls back and propagates", func(t *testing.T) {
+		tr, mock := newTransactor(t)
+
+		mock.ExpectBegin()
+		mock.ExpectRollback()
+
+		assert.PanicsWithValue(t, "boom", func() {
+			_ = tr.WithinTx(context.Background(), func(ctx context.Context) error {
+				panic("boom")
+			})
+		})
+	})
+
+	t.Run("nested panic skips the savepoint rollback and rolls back the outer tx", func(t *testing.T) {
+		tr, mock := newTransactor(t)
+
+		mock.ExpectBegin()
+		mock.ExpectExec("SAVEPOINT sp_1").WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectRollback()
+
+		assert.PanicsWithValue(t, "boom", func() {
+			_ = tr.WithinTx(context.Background(), func(ctx context.Context) error {
+				return tr.WithinTx(ctx, func(ctx context.Context) error {
+					panic("boom")
+				})
+			})
+		})
+	})
+}
+
+func TestTransactor_WithinTxNestedRollbackError(t *testing.T) {
+	tr, mock := newTransactor(t)
+
+	innerErr := errors.New("nested failure")
+	rollbackErr := errors.New("no such savepoint")
+
+	mock.ExpectBegin()
+	mock.ExpectExec("SAVEPOINT sp_1").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("ROLLBACK TO SAVEPOINT sp_1").WillReturnError(rollbackErr)
+	mock.ExpectRollback()
+
+	err := tr.WithinTx(context.Background(), func(ctx context.Context) error {
+		return tr.WithinTx(ctx, func(ctx context.Context) error {
+			return innerErr
+		})
+	})
+
+	assert.ErrorIs(t, err, innerErr)
+	assert.ErrorIs(t, err, rollbackErr)
+}
