@@ -44,28 +44,22 @@ func ParseMetric(s string) (Metric, error) {
 	return MetricUnknown, fmt.Errorf("metric: unknown value %q", s)
 }
 
-//func (m Metric) MarshalJSON() ([]byte, error) {
-//	s := m.String()
-//	if s == "" {
-//		return nil, fmt.Errorf("metric: cannot marshal value %d", int(m))
-//	}
-//	return json.Marshal(s)
-//}
-//
-//func (m *Metric) UnmarshalJSON(data []byte) error {
-//	var s string
-//	if err := json.Unmarshal(data, &s); err != nil {
-//		return err
-//	}
-//
-//	v, err := ParseMetric(s)
-//	if err != nil {
-//		return err
-//	}
-//
-//	*m = v
-//	return nil
-//}
+func (m Metric) MarshalText() ([]byte, error) {
+	s := m.String()
+	if s == "" {
+		return nil, fmt.Errorf("metric: cannot marshal value %d", int(e))
+	}
+	return []byte(s), nil
+}
+
+func (m *Metric) UnmarshalText(text []byte) error {
+	v, err := ParseMetric(string(text))
+	if err != nil {
+		return err
+	}
+	*m = v
+	return nil
+}
 
 func (m *Metric) Scan(src any) error {
 	var s string

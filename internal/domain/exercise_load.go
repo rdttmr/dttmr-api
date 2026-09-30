@@ -44,28 +44,22 @@ func ParseLoad(s string) (Load, error) {
 	return LoadUnknown, fmt.Errorf("load: unknown value %q", s)
 }
 
-//func (l Load) MarshalJSON() ([]byte, error) {
-//	s := l.String()
-//	if s == "" {
-//		return nil, fmt.Errorf("load: cannot marshal value %d", int(l))
-//	}
-//	return json.Marshal(s)
-//}
-//
-//func (l *Load) UnmarshalJSON(data []byte) error {
-//	var s string
-//	if err := json.Unmarshal(data, &s); err != nil {
-//		return err
-//	}
-//
-//	v, err := ParseLoad(s)
-//	if err != nil {
-//		return err
-//	}
-//
-//	*l = v
-//	return nil
-//}
+func (l Load) MarshalText() ([]byte, error) {
+	s := l.String()
+	if s == "" {
+		return nil, fmt.Errorf("load: cannot marshal value %d", int(l))
+	}
+	return []byte(s), nil
+}
+
+func (l *Load) UnmarshalText(text []byte) error {
+	v, err := ParseLoad(string(text))
+	if err != nil {
+		return err
+	}
+	*l = v
+	return nil
+}
 
 func (l *Load) Scan(src any) error {
 	var s string
