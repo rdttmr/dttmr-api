@@ -84,6 +84,9 @@ func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Re
 
 		recipes = append(recipes, r)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get recipes: %w", err)
+	}
 
 	return recipes, nil
 }
@@ -142,6 +145,9 @@ func (r *RecipeRepo) LockUserRecipes(ctx context.Context, userID string) ([]stri
 
 		ids = append(ids, recipeID)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to lock users recipes: %w", err)
+	}
 
 	return ids, nil
 }
@@ -199,6 +205,9 @@ func (r *RecipeRepo) GetListItemsForRecipe(ctx context.Context, recipeID string)
 		}
 
 		items = append(items, l)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get list items for recipes: %w", err)
 	}
 
 	return items, nil

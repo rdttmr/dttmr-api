@@ -49,6 +49,9 @@ func (r *ExerciseRepo) GetExercises(ctx context.Context, offset int, count int) 
 
 		exercises = append(exercises, e)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get exercises: %w", err)
+	}
 
 	return exercises, nil
 }

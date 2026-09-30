@@ -86,6 +86,9 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 
 		lists = append(lists, l)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get lists: %w", err)
+	}
 
 	return lists, nil
 }
@@ -129,6 +132,9 @@ func (r *ListRepo) LockUsersLists(ctx context.Context, userID string) ([]string,
 		}
 
 		ids = append(ids, listID)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to lock users lists: %w", err)
 	}
 
 	return ids, nil
@@ -242,6 +248,9 @@ func (r *ListRepo) GetListItemsForList(ctx context.Context, listID string) ([]do
 
 		l.ListID = listID
 		items = append(items, l)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get list items for lists: %w", err)
 	}
 
 	return items, nil

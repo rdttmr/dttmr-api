@@ -67,6 +67,9 @@ func (r *GroupRepo) GetGroups(ctx context.Context, userID string) ([]domain.Grou
 
 		groups = append(groups, g)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get groups: %w", err)
+	}
 
 	return groups, nil
 }
@@ -187,6 +190,9 @@ func (r *GroupRepo) GetGroupMembers(ctx context.Context, groupID string) ([]doma
 		}
 
 		members = append(members, u)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get group members: %w", err)
 	}
 
 	return members, nil

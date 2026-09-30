@@ -112,6 +112,9 @@ func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, 
 
 		invites = append(invites, i)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get invites: %w", err)
+	}
 
 	return invites, nil
 }
