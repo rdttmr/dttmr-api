@@ -50,9 +50,6 @@ func (r *GroupRepo) GetGroups(ctx context.Context, userID string) ([]domain.Grou
 		userID,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get groups: %w", err)
 	}
 	defer rows.Close()
@@ -174,9 +171,6 @@ func (r *GroupRepo) GetGroupMembers(ctx context.Context, groupID string) ([]doma
 		groupID,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get group members: %w", err)
 	}
 	defer rows.Close()
@@ -252,12 +246,19 @@ func (r *GroupRepo) SetDefaultGroupID(ctx context.Context, userID string, groupI
 		return fmt.Errorf("failed to reset current default group_id: %w", err)
 	}
 
-	_, err = r.conn(ctx).ExecContext(ctx,
+	res, err := r.conn(ctx).ExecContext(ctx,
 		"UPDATE group_members SET is_default = TRUE WHERE user_id = $1 AND group_id = $2",
 		userID, groupID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to set default group_id: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected: %w", err)
+	}
+	if affected < 1 {
+		return domain.ErrUserNotInGroup
 	}
 
 	return nil
