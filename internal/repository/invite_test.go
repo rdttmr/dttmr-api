@@ -55,7 +55,6 @@ func TestInviteRepo_CreateInvite(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, &domain.Invite{
 			ID:         "invite-1",
-			Code:       "ABC123",
 			ExpiresAt:  expiresAt,
 			ConsumedAt: nil,
 		}, invite)
