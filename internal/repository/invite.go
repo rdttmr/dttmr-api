@@ -102,11 +102,14 @@ func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, 
 	var invites []domain.Invite
 	for rows.Next() {
 		var i domain.Invite
-		err = rows.Scan(&i.ID, &i.UsedBy, &i.ExpiresAt, &i.ConsumedAt)
+		var usedBy sql.NullString
+
+		err = rows.Scan(&i.ID, &usedBy, &i.ExpiresAt, &i.ConsumedAt)
 		if err != nil {
 			return nil, err
 		}
 
+		i.UsedBy = usedBy.String
 		invites = append(invites, i)
 	}
 	if err = rows.Err(); err != nil {

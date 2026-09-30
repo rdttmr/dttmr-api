@@ -33,12 +33,15 @@ const (
 	deleteInviteQuery           = "DELETE FROM invites WHERE id = $1 AND inviter_user_id = $2 AND consumed_at IS NULL"
 	consumeInviteQuery          = "UPDATE invites SET invitee_user_id=$1, consumed_at=NOW() WHERE id=$2 AND expires_at > NOW() AND consumed_at IS NULL"
 	selectInviteQuery           = "SELECT id, code, expires_at, consumed_at FROM invites WHERE code=$1"
-	selectInvitesQuery          = "SELECT id, code, expires_at, consumed_at FROM invites WHERE inviter_user_id=$1 ORDER BY created_at DESC OFFSET $2 LIMIT $3"
+	selectInvitesQuery          = "SELECT i.id, u.name, i.expires_at, i.consumed_at FROM invites i LEFT JOIN users u ON invitee_user_id=u.id WHERE inviter_user_id=$1 ORDER BY i.created_at DESC OFFSET $2 LIMIT $3"
 	countInvitesQuery           = "SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1"
 	countInvitesStructuredQuery = "SELECT COUNT(*) FILTER (WHERE expires_at > NOW() AND consumed_at IS NULL), COUNT(*) FILTER (WHERE expires_at <= NOW() AND consumed_at IS NULL), COUNT(consumed_at) FROM invites WHERE inviter_user_id = $1"
 )
 
-var inviteColumns = []string{"id", "code", "expires_at", "consumed_at"}
+var (
+	inviteColumns     = []string{"id", "code", "expires_at", "consumed_at"}
+	inviteListColumns = []string{"id", "name", "expires_at", "consumed_at"}
+)
 
 func TestInviteRepo_CreateInvite(t *testing.T) {
 	expiresAt := time.Date(2026, 10, 7, 10, 0, 0, 0, time.UTC)
@@ -250,17 +253,38 @@ func TestInviteRepo_GetInvites(t *testing.T) {
 		mock.ExpectQuery(selectInvitesQuery).
 			WithArgs("user-1", 20, 10).
 			WillReturnRows(
-				sqlmock.NewRows(inviteColumns).
-					AddRow("invite-2", "DEF456", expiresAt, nil).
-					AddRow("invite-1", "ABC123", expiresAt, consumedAt),
+				sqlmock.NewRows(inviteListColumns).
+					AddRow("invite-2", "Alex", expiresAt, consumedAt).
+					AddRow("invite-1", "Sam", expiresAt, consumedAt),
 			)
 
 		invites, err := repo.GetInvites(context.Background(), "user-1", 20, 10)
 
 		require.NoError(t, err)
 		assert.Equal(t, []domain.Invite{
-			{ID: "invite-2", Code: "DEF456", ExpiresAt: expiresAt},
-			{ID: "invite-1", Code: "ABC123", ExpiresAt: expiresAt, ConsumedAt: &consumedAt},
+			{ID: "invite-2", UsedBy: "Alex", ExpiresAt: expiresAt, ConsumedAt: &consumedAt},
+			{ID: "invite-1", UsedBy: "Sam", ExpiresAt: expiresAt, ConsumedAt: &consumedAt},
+		}, invites)
+	})
+
+	// The LEFT JOIN yields NULL for u.name as long as nobody registered with the invite.
+	t.Run("unused invite has no user", func(t *testing.T) {
+		repo, mock := newInviteRepo(t)
+
+		mock.ExpectQuery(selectInvitesQuery).
+			WithArgs("user-1", 0, 10).
+			WillReturnRows(
+				sqlmock.NewRows(inviteListColumns).
+					AddRow("invite-2", nil, expiresAt, nil).
+					AddRow("invite-1", "Sam", expiresAt, consumedAt),
+			)
+
+		invites, err := repo.GetInvites(context.Background(), "user-1", 0, 10)
+
+		require.NoError(t, err)
+		assert.Equal(t, []domain.Invite{
+			{ID: "invite-2", ExpiresAt: expiresAt},
+			{ID: "invite-1", UsedBy: "Sam", ExpiresAt: expiresAt, ConsumedAt: &consumedAt},
 		}, invites)
 	})
 
@@ -269,7 +293,7 @@ func TestInviteRepo_GetInvites(t *testing.T) {
 
 		mock.ExpectQuery(selectInvitesQuery).
 			WithArgs("user-1", 0, 10).
-			WillReturnRows(sqlmock.NewRows(inviteColumns))
+			WillReturnRows(sqlmock.NewRows(inviteListColumns))
 
 		invites, err := repo.GetInvites(context.Background(), "user-1", 0, 10)
 
@@ -297,7 +321,7 @@ func TestInviteRepo_GetInvites(t *testing.T) {
 
 		mock.ExpectQuery(selectInvitesQuery).
 			WithArgs("user-1", 0, 10).
-			WillReturnRows(sqlmock.NewRows(inviteColumns).AddRow("invite-1", "ABC123", "not a time", nil))
+			WillReturnRows(sqlmock.NewRows(inviteListColumns).AddRow("invite-1", "Sam", "not a time", nil))
 
 		invites, err := repo.GetInvites(context.Background(), "user-1", 0, 10)
 
@@ -312,9 +336,9 @@ func TestInviteRepo_GetInvites(t *testing.T) {
 		mock.ExpectQuery(selectInvitesQuery).
 			WithArgs("user-1", 0, 10).
 			WillReturnRows(
-				sqlmock.NewRows(inviteColumns).
-					AddRow("invite-2", "DEF456", expiresAt, nil).
-					AddRow("invite-1", "ABC123", expiresAt, nil).
+				sqlmock.NewRows(inviteListColumns).
+					AddRow("invite-2", "Alex", expiresAt, consumedAt).
+					AddRow("invite-1", "Sam", expiresAt, consumedAt).
 					RowError(1, rowErr),
 			)
 
