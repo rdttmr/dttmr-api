@@ -14,11 +14,12 @@ type InviteRepo struct {
 	Repo
 }
 
-func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, code string, expiresAt time.Time) (*domain.Invite, error) {
+// CreateInvite does not return codeHash
+func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, codeHash string, expiresAt time.Time) (*domain.Invite, error) {
 	var id string
 	err := r.conn(ctx).QueryRowContext(ctx,
 		"INSERT INTO invites (inviter_user_id, code, expires_at) VALUES ($1, $2, $3) RETURNING id",
-		inviterUserID, code, expiresAt,
+		inviterUserID, codeHash, expiresAt,
 	).Scan(&id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert invite: %w", err)
@@ -26,7 +27,6 @@ func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, cod
 
 	return &domain.Invite{
 		ID:         id,
-		Code:       code,
 		ExpiresAt:  expiresAt,
 		ConsumedAt: nil,
 	}, nil
