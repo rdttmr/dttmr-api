@@ -2,8 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"git.dittmar.dev/robin/dttmr-api/internal/domain"
@@ -36,7 +34,7 @@ func (r *RecipeRepo) DeleteRecipe(ctx context.Context, recipeID string) error {
 }
 
 func (r *RecipeRepo) SetRecipeGroup(ctx context.Context, recipeID string, groupID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE recipes SET group_id = $1 WHERE id = $2", groupID, recipeID)
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE recipes SET group_id = $1, modified_at = NOW() WHERE id = $2", groupID, recipeID)
 	if err != nil {
 		return fmt.Errorf("failed to update recipe: %w", err)
 	}
@@ -66,7 +64,7 @@ func (r *RecipeRepo) SetRecipeName(ctx context.Context, recipeID string, name st
 
 func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Recipe, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) AS total_items FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at",
+		"SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at",
 		userID,
 	)
 	if err != nil {
@@ -83,6 +81,9 @@ func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Re
 		}
 
 		recipes = append(recipes, r)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get recipes: %w", err)
 	}
 
 	return recipes, nil
@@ -142,6 +143,9 @@ func (r *RecipeRepo) LockUserRecipes(ctx context.Context, userID string) ([]stri
 
 		ids = append(ids, recipeID)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to lock users recipes: %w", err)
+	}
 
 	return ids, nil
 }
@@ -183,9 +187,6 @@ func (r *RecipeRepo) GetListItemsForRecipe(ctx context.Context, recipeID string)
 		recipeID,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get list items for recipe: %w", err)
 	}
 	defer rows.Close()
@@ -199,6 +200,9 @@ func (r *RecipeRepo) GetListItemsForRecipe(ctx context.Context, recipeID string)
 		}
 
 		items = append(items, l)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get list items for recipes: %w", err)
 	}
 
 	return items, nil

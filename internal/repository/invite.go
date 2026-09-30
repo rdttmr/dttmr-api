@@ -14,19 +14,19 @@ type InviteRepo struct {
 	Repo
 }
 
-func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, code string, expiresAt time.Time) (*domain.Invite, error) {
+// CreateInvite does not return codeHash
+func (r *InviteRepo) CreateInvite(ctx context.Context, inviterUserID string, codeHash string, expiresAt time.Time) (*domain.Invite, error) {
 	var id string
 	err := r.conn(ctx).QueryRowContext(ctx,
 		"INSERT INTO invites (inviter_user_id, code, expires_at) VALUES ($1, $2, $3) RETURNING id",
-		inviterUserID, code, expiresAt,
+		inviterUserID, codeHash, expiresAt,
 	).Scan(&id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert invites: %w", err)
+		return nil, fmt.Errorf("failed to insert invite: %w", err)
 	}
 
 	return &domain.Invite{
 		ID:         id,
-		Code:       code,
 		ExpiresAt:  expiresAt,
 		ConsumedAt: nil,
 	}, nil
@@ -91,13 +91,10 @@ func (r *InviteRepo) GetInvite(ctx context.Context, code string) (*domain.Invite
 
 func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, count int) ([]domain.Invite, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT id, code, expires_at, consumed_at FROM invites WHERE inviter_user_id=$1 ORDER BY created_at DESC OFFSET $2 LIMIT $3",
+		"SELECT i.id, u.name, i.expires_at, i.consumed_at FROM invites i LEFT JOIN users u ON invitee_user_id=u.id WHERE inviter_user_id=$1 ORDER BY i.created_at DESC OFFSET $2 LIMIT $3",
 		userID, offset, count,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get invites: %w", err)
 	}
 	defer rows.Close()
@@ -105,12 +102,18 @@ func (r *InviteRepo) GetInvites(ctx context.Context, userID string, offset int, 
 	var invites []domain.Invite
 	for rows.Next() {
 		var i domain.Invite
-		err = rows.Scan(&i.ID, &i.Code, &i.ExpiresAt, &i.ConsumedAt)
+		var usedBy sql.NullString
+
+		err = rows.Scan(&i.ID, &usedBy, &i.ExpiresAt, &i.ConsumedAt)
 		if err != nil {
 			return nil, err
 		}
 
+		i.UsedBy = usedBy.String
 		invites = append(invites, i)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to get invites: %w", err)
 	}
 
 	return invites, nil
@@ -131,29 +134,12 @@ func (r *InviteRepo) CountInvites(ctx context.Context, userID string) (int, erro
 
 func (r *InviteRepo) CountInvitesStructured(ctx context.Context, userID string) (*domain.InviteCounts, error) {
 	var counts domain.InviteCounts
-	conn := r.conn(ctx)
-	err := conn.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1 AND expires_at > NOW() AND consumed_at IS NULL",
+	err := r.conn(ctx).QueryRowContext(ctx,
+		"SELECT COUNT(*) FILTER (WHERE expires_at > NOW() AND consumed_at IS NULL), COUNT(*) FILTER (WHERE expires_at <= NOW() AND consumed_at IS NULL), COUNT(consumed_at) FROM invites WHERE inviter_user_id = $1",
 		userID,
-	).Scan(&counts.Active)
+	).Scan(&counts.Active, &counts.Expired, &counts.Used)
 	if err != nil {
-		return nil, fmt.Errorf("failed to count active invites: %w", err)
-	}
-
-	err = conn.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM invites WHERE inviter_user_id=$1 AND expires_at < NOW() AND consumed_at IS NULL",
-		userID,
-	).Scan(&counts.Expired)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count expired invites: %w", err)
-	}
-
-	err = conn.QueryRowContext(ctx,
-		"SELECT COUNT(consumed_at) FROM invites WHERE inviter_user_id=$1",
-		userID,
-	).Scan(&counts.Used)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count consumed invites: %w", err)
+		return nil, fmt.Errorf("failed to count structured invites: %w", err)
 	}
 
 	return &counts, nil

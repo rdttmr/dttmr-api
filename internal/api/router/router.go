@@ -21,7 +21,7 @@ type Config struct {
 func NewMux(cfg Config) http.Handler {
 	store := repository.NewStore(cfg.Database)
 
-	authService := domain.NewAuthService(store.Auth, []byte(cfg.JWTSecret))
+	authService := domain.NewAuthService(store, store.Auth, []byte(cfg.JWTSecret))
 	inviteService := domain.NewInviteService(store.Invite)
 	userService := domain.NewUserService(store.User)
 	groupService := domain.NewGroupService(store, store.Group)
@@ -71,6 +71,7 @@ func NewMux(cfg Config) http.Handler {
 	apiMux.Handle("GET /groups/{id}/members", protected(groupHandler.GetGroupMembers))
 	apiMux.Handle("POST /groups/{id}/share", protected(groupHandler.ShareGroup))
 	apiMux.Handle("POST /groups/join", protected(groupHandler.JoinGroup))
+	apiMux.Handle("POST /groups/{id}/leave", protected(groupHandler.LeaveGroup))
 	apiMux.Handle("POST /groups/{id}/default", protected(groupHandler.SetDefaultGroup))
 
 	// Lists

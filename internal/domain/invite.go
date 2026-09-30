@@ -14,10 +14,10 @@ var (
 	ErrInviteConsumed  = errors.New("invite is already consumed")
 )
 
-// TODO: `Code` should not live in the database; hash instead.
 type Invite struct {
 	ID         string     `json:"id"`
-	Code       string     `json:"code"`
+	Code       string     `json:"code,omitempty"`
+	UsedBy     string     `json:"used_by,omitempty"`
 	ExpiresAt  time.Time  `json:"expires_at"`
 	ConsumedAt *time.Time `json:"consumed_at"`
 }
@@ -55,10 +55,16 @@ func (s *InviteService) CreateInvite(ctx context.Context, inviterUserID string) 
 	if err != nil {
 		return nil, err
 	}
-	code := hashToken(token)
+	codeHash := hashToken(token)
 	expiresAt := time.Now().Add(time.Hour * 24 * 7)
 
-	return s.repo.CreateInvite(ctx, inviterUserID, code, expiresAt)
+	invite, err := s.repo.CreateInvite(ctx, inviterUserID, codeHash, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+
+	invite.Code = token
+	return invite, nil
 }
 
 func (s *InviteService) DeleteInvite(ctx context.Context, userID string, inviteID string) error {
@@ -73,6 +79,9 @@ func (s *InviteService) DeleteInvite(ctx context.Context, userID string, inviteI
 }
 
 func (s *InviteService) ConsumeInvite(ctx context.Context, inviteID string, inviteeUserID string) error {
+	if inviteID == "" {
+		return ErrInviteIDMissing
+	}
 	if inviteeUserID == "" {
 		return ErrUserIDMissing
 	}
@@ -85,7 +94,7 @@ func (s *InviteService) GetInvite(ctx context.Context, code string) (*Invite, er
 		return nil, ErrCodeMissing
 	}
 
-	invite, err := s.repo.GetInvite(ctx, code)
+	invite, err := s.repo.GetInvite(ctx, hashToken(code))
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +105,7 @@ func (s *InviteService) GetInvite(ctx context.Context, code string) (*Invite, er
 		return nil, ErrInviteConsumed
 	}
 
+	invite.Code = code
 	return invite, nil
 }
 

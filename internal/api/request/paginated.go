@@ -47,7 +47,7 @@ func ParsePaginatedQueryParams(r *http.Request) (int, int, error) {
 			slog.Int("page", page))
 		return 0, 0, ErrInvalidPageValue
 	}
-	if count <= 0 {
+	if count <= 0 || count > 100 {
 		slog.ErrorContext(ctx,
 			"count parameter is invalid",
 			slog.Int("count", count))

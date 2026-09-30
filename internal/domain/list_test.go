@@ -12,9 +12,8 @@ import (
 )
 
 var (
-	_ Transactor      = (*fakeTransactor)(nil)
-	_ ListRepository  = (*mockListRepository)(nil)
-	_ GroupRepository = (*mockGroupRepository)(nil)
+	_ Transactor     = (*fakeTransactor)(nil)
+	_ ListRepository = (*mockListRepository)(nil)
 )
 
 type txCtxKey struct{}
@@ -120,90 +119,6 @@ func (m *mockListRepository) GetListItemsForList(ctx context.Context, listID str
 	return items, args.Error(1)
 }
 
-type mockGroupRepository struct {
-	mock.Mock
-}
-
-func (m *mockGroupRepository) CreateGroup(ctx context.Context, name string, createdBy string) (*Group, error) {
-	args := m.Called(ctx, name, createdBy)
-	group, _ := args.Get(0).(*Group)
-	return group, args.Error(1)
-}
-
-func (m *mockGroupRepository) DeleteGroup(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *mockGroupRepository) SetGroupName(ctx context.Context, id string, name string) error {
-	args := m.Called(ctx, id, name)
-	return args.Error(0)
-}
-
-func (m *mockGroupRepository) GetGroups(ctx context.Context, userID string) ([]Group, error) {
-	args := m.Called(ctx, userID)
-	groups, _ := args.Get(0).([]Group)
-	return groups, args.Error(1)
-}
-
-func (m *mockGroupRepository) CreateGroupInvite(ctx context.Context, groupID string, codeHash string, expiresAt time.Time, createdBy string) (*GroupInvite, error) {
-	args := m.Called(ctx, groupID, codeHash, expiresAt, createdBy)
-	invite, _ := args.Get(0).(*GroupInvite)
-	return invite, args.Error(1)
-}
-
-func (m *mockGroupRepository) DeleteGroupInvite(ctx context.Context, inviteID string, createdBy string) error {
-	args := m.Called(ctx, inviteID, createdBy)
-	return args.Error(0)
-}
-
-func (m *mockGroupRepository) GetGroupInvite(ctx context.Context, codeHash string) (*GroupInvite, error) {
-	args := m.Called(ctx, codeHash)
-	invite, _ := args.Get(0).(*GroupInvite)
-	return invite, args.Error(1)
-}
-
-func (m *mockGroupRepository) ConsumeGroupInvite(ctx context.Context, inviteID string, usedBy string) error {
-	args := m.Called(ctx, inviteID, usedBy)
-	return args.Error(0)
-}
-
-func (m *mockGroupRepository) AddUserToGroup(ctx context.Context, groupID string, userID string, role string) error {
-	args := m.Called(ctx, groupID, userID, role)
-	return args.Error(0)
-}
-
-func (m *mockGroupRepository) RemoveUserFromGroup(ctx context.Context, groupID string, userID string) error {
-	args := m.Called(ctx, groupID, userID)
-	return args.Error(0)
-}
-
-func (m *mockGroupRepository) GetGroupMembers(ctx context.Context, groupID string) ([]GroupMember, error) {
-	args := m.Called(ctx, groupID)
-	members, _ := args.Get(0).([]GroupMember)
-	return members, args.Error(1)
-}
-
-func (m *mockGroupRepository) IsUserInGroup(ctx context.Context, groupID string, userID string) (bool, error) {
-	args := m.Called(ctx, groupID, userID)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *mockGroupRepository) GetRoleForGroup(ctx context.Context, groupID string, userID string) (string, error) {
-	args := m.Called(ctx, groupID, userID)
-	return args.String(0), args.Error(1)
-}
-
-func (m *mockGroupRepository) GetDefaultGroupID(ctx context.Context, userID string) (string, error) {
-	args := m.Called(ctx, userID)
-	return args.String(0), args.Error(1)
-}
-
-func (m *mockGroupRepository) SetDefaultGroupID(ctx context.Context, userID string, groupID string) error {
-	args := m.Called(ctx, userID, groupID)
-	return args.Error(0)
-}
-
 // newListServiceWithGroups wires a ListService to a real GroupService backed
 // by a mock GroupRepository. The group service gets its own transactor, so
 // tx.calls only counts transactions started by the list service.
@@ -244,11 +159,6 @@ func callOrder(calls []mock.Call) []string {
 func assertCallOrder(t *testing.T, repo *mockListRepository, want ...string) {
 	t.Helper()
 	assert.Equal(t, want, callOrder(repo.Calls))
-}
-
-func assertGroupCallOrder(t *testing.T, groups *mockGroupRepository, want ...string) {
-	t.Helper()
-	assert.Equal(t, want, callOrder(groups.Calls))
 }
 
 func TestListService_CreateList(t *testing.T) {

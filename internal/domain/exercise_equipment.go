@@ -33,13 +33,16 @@ var equipmentNames = [...]string{
 var equipmentValues = func() map[string]Equipment {
 	m := make(map[string]Equipment, len(equipmentNames))
 	for i, name := range equipmentNames {
+		if name == "" {
+			continue
+		}
 		m[name] = Equipment(i)
 	}
 	return m
 }()
 
 func (e Equipment) String() string {
-	if e < 0 || int(e) > len(equipmentNames) {
+	if e < 0 || int(e) >= len(equipmentNames) {
 		return ""
 	}
 	return equipmentNames[e]
@@ -52,28 +55,22 @@ func ParseEquipment(s string) (Equipment, error) {
 	return EquipmentUnknown, fmt.Errorf("equipment: unknown value %q", s)
 }
 
-//func (e Equipment) MarshalJSON() ([]byte, error) {
-//	s := e.String()
-//	if s == "" {
-//		return nil, fmt.Errorf("equipment: cannot marshal value %d", int(e))
-//	}
-//	return json.Marshal(s)
-//}
-//
-//func (e *Equipment) UnmarshalJSON(data []byte) error {
-//	var s string
-//	if err := json.Unmarshal(data, &s); err != nil {
-//		return err
-//	}
-//
-//	v, err := ParseEquipment(s)
-//	if err != nil {
-//		return err
-//	}
-//
-//	*e = v
-//	return nil
-//}
+func (e Equipment) MarshalText() ([]byte, error) {
+	s := e.String()
+	if s == "" {
+		return nil, fmt.Errorf("equipment: cannot marshal value %d", int(e))
+	}
+	return []byte(s), nil
+}
+
+func (e *Equipment) UnmarshalText(text []byte) error {
+	v, err := ParseEquipment(string(text))
+	if err != nil {
+		return err
+	}
+	*e = v
+	return nil
+}
 
 type EquipmentSet []Equipment
 

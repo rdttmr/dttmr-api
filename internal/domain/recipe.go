@@ -25,10 +25,6 @@ type Recipe struct {
 	Position   int       `json:"position"`
 }
 
-type RecipeShareCode struct {
-	Code string `json:"code"`
-}
-
 type RecipeRepository interface {
 	CreateRecipe(ctx context.Context, groupID string, name string) (*Recipe, error)
 	DeleteRecipe(ctx context.Context, recipeID string) error
@@ -105,6 +101,7 @@ func (s *RecipeService) SetRecipeGroup(ctx context.Context, authUserID string, r
 		return ErrGroupIDMissing
 	}
 
+	// TODO: check for "owner" role
 	if err := s.userAllowedToAccessRecipe(ctx, authUserID, recipeID); err != nil {
 		return err
 	}

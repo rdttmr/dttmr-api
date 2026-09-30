@@ -9,7 +9,9 @@ import (
 
 var (
 	ErrGroupIDMissing         = errors.New("group id is required")
-	ErrMustHaveOneGroup       = errors.New("user must have at least one group")
+	ErrGroupHasMembers        = errors.New("group with more than on member must not be deleted")
+	ErrGroupIsDefault         = errors.New("group is default")
+	ErrOwnerCantLeave         = errors.New("group owner must not leave")
 	ErrRoleMissing            = errors.New("role is required")
 	ErrUserNotInGroup         = errors.New("user is not in group")
 	ErrUserNotOwner           = errors.New("user is not owner")
@@ -120,18 +122,29 @@ func (s *GroupService) DeleteGroup(ctx context.Context, authUserID string, group
 		return err
 	}
 
-	groups, err := s.GetGroups(ctx, authUserID)
+	defaultID, err := s.repo.GetDefaultGroupID(ctx, authUserID)
 	if err != nil {
 		return err
 	}
-	if len(groups) < 2 {
-		return ErrMustHaveOneGroup
+	if defaultID == groupID {
+		return ErrGroupIsDefault
+	}
+
+	members, err := s.repo.GetGroupMembers(ctx, groupID)
+	if err != nil {
+		return err
+	}
+	if len(members) > 1 {
+		return ErrGroupHasMembers
 	}
 
 	return s.repo.DeleteGroup(ctx, groupID)
 }
 
 func (s *GroupService) SetGroupName(ctx context.Context, authUserID string, groupID string, name string) error {
+	if authUserID == "" {
+		return ErrUserIDMissing
+	}
 	if groupID == "" {
 		return ErrGroupIDMissing
 	}
@@ -236,6 +249,22 @@ func (s *GroupService) LeaveGroup(ctx context.Context, authUserID string, groupI
 	}
 	if groupID == "" {
 		return ErrGroupIDMissing
+	}
+
+	isOwner, err := s.UserHasRole(ctx, authUserID, groupID, []string{RoleOwner})
+	if err != nil {
+		return err
+	}
+	if isOwner {
+		return ErrOwnerCantLeave
+	}
+
+	defaultID, err := s.repo.GetDefaultGroupID(ctx, authUserID)
+	if err != nil {
+		return err
+	}
+	if defaultID == groupID {
+		return ErrGroupIsDefault
 	}
 
 	if err := s.UserInGroup(ctx, authUserID, groupID); err != nil {

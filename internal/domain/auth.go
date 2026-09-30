@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -15,8 +16,9 @@ import (
 )
 
 var (
-	ErrEmailNotFound = errors.New("email not found")
-	ErrPasswordWrong = errors.New("password is wrong")
+	ErrEmailNotFound        = errors.New("email not found")
+	ErrPasswordWrong        = errors.New("password is wrong")
+	ErrEmailOrPasswordWrong = errors.New("email or password wrong")
 )
 
 type AuthRepository interface {
@@ -28,7 +30,18 @@ type AuthRepository interface {
 	RevokeRefreshTokens(ctx context.Context, userID string) error
 }
 
+var dummyPasswordHash = mustGenerateHash("dummy")
+
+func mustGenerateHash(password string) []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		panic(fmt.Sprintf("generate dummy password hash: %v", err))
+	}
+	return hash
+}
+
 type AuthService struct {
+	tx        Transactor
 	repo      AuthRepository
 	jwtSecret []byte
 }
@@ -63,22 +76,27 @@ func GetAuthContext(ctx context.Context) (*AuthContext, error) {
 	return ac, nil
 }
 
-func NewAuthService(r AuthRepository, jwtSecret []byte) *AuthService {
-	return &AuthService{repo: r, jwtSecret: jwtSecret}
+func NewAuthService(tx Transactor, r AuthRepository, jwtSecret []byte) *AuthService {
+	return &AuthService{tx: tx, repo: r, jwtSecret: jwtSecret}
 }
 
 func (s *AuthService) Authenticate(ctx context.Context, email string, password string) (*AuthUser, error) {
-	user, err := s.repo.GetUserByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, strings.ToLower(email))
 	if err != nil {
-		return user, err
+		if errors.Is(err, ErrEmailNotFound) {
+			// compare dummy, so execution time does not leak if email exists
+			_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(password))
+			return nil, ErrEmailOrPasswordWrong
+		}
+		return nil, err
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-			return user, ErrPasswordWrong
+			return nil, ErrEmailOrPasswordWrong
 		}
-		return user, err
+		return nil, err
 	}
 
 	return user, nil
@@ -95,18 +113,27 @@ func (s *AuthService) Login(ctx context.Context, email string, password string) 
 
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
 	tokenHash := hashToken(refreshToken)
+	var tokenPair TokenPair
 
-	userID, err := s.repo.ConsumeRefreshToken(ctx, tokenHash)
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		userID, err := s.repo.ConsumeRefreshToken(ctx, tokenHash)
+		if err != nil {
+			return err
+		}
+
+		authUser, err := s.repo.GetUserById(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		tokenPair, err = s.issueTokens(ctx, authUser)
+		return err
+	})
 	if err != nil {
 		return TokenPair{}, err
 	}
 
-	authUser, err := s.repo.GetUserById(ctx, userID)
-	if err != nil {
-		return TokenPair{}, err
-	}
-
-	return s.issueTokens(ctx, authUser)
+	return tokenPair, nil
 }
 
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
@@ -133,17 +160,17 @@ const AuthContextKey = contextKey("auth")
 func (s *AuthService) issueTokens(ctx context.Context, authUser *AuthUser) (TokenPair, error) {
 	accessToken, err := s.GenerateAccessToken(authUser)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("failed to issue access token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to issue access token: %w", err)
 	}
 
 	refreshToken, err := s.GenerateRefreshToken()
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("failed to issue refresh token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to issue refresh token: %w", err)
 	}
 
 	err = s.repo.StoreRefreshToken(ctx, authUser.ID, hashToken(refreshToken), time.Now().Add(time.Hour*24*7))
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("failed to store refresh token: %s", err)
+		return TokenPair{}, fmt.Errorf("failed to store refresh token: %w", err)
 	}
 
 	return TokenPair{
@@ -188,7 +215,7 @@ func (s *AuthService) ParseAccessToken(ctx context.Context, tokenString string) 
 		return s.jwtSecret, nil
 	})
 	if err != nil || !token.Valid {
-		slog.ErrorContext(ctx, "invalid or expired token", slog.Any("token", token))
+		slog.ErrorContext(ctx, "invalid or expired token", slog.Any("error", err))
 		return nil, err
 	}
 
