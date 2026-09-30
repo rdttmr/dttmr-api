@@ -21,7 +21,7 @@ type Config struct {
 func NewMux(cfg Config) http.Handler {
 	store := repository.NewStore(cfg.Database)
 
-	authService := domain.NewAuthService(store.Auth, []byte(cfg.JWTSecret))
+	authService := domain.NewAuthService(store, store.Auth, []byte(cfg.JWTSecret))
 	inviteService := domain.NewInviteService(store.Invite)
 	userService := domain.NewUserService(store.User)
 	groupService := domain.NewGroupService(store, store.Group)
