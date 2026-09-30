@@ -28,7 +28,7 @@ var metricValues = func() map[string]Metric {
 }()
 
 func (m Metric) String() string {
-	if m < 0 || int(m) > len(metricNames) {
+	if m < 0 || int(m) >= len(metricNames) {
 		return ""
 	}
 	return metricNames[m]

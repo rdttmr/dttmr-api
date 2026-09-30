@@ -28,7 +28,7 @@ var loadValues = func() map[string]Load {
 }()
 
 func (l Load) String() string {
-	if l < 0 || int(l) > len(loadNames) {
+	if l < 0 || int(l) >= len(loadNames) {
 		return ""
 	}
 	return loadNames[l]

@@ -39,7 +39,7 @@ var equipmentValues = func() map[string]Equipment {
 }()
 
 func (e Equipment) String() string {
-	if e < 0 || int(e) > len(equipmentNames) {
+	if e < 0 || int(e) >= len(equipmentNames) {
 		return ""
 	}
 	return equipmentNames[e]
