@@ -26,6 +26,7 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 		resource.WithAttributes(
 			semconv.ServiceName(cfg.ServiceName),
 			semconv.ServiceVersion(cfg.ServiceVersion),
+			semconv.DeploymentEnvironment(cfg.Environment),
 		),
 	)
 	if err != nil {
@@ -38,7 +39,6 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 			propagation.Baggage{},
 		),
 	)
-
 	traceExporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(), // TODO: for local development
 		otlptracegrpc.WithEndpoint(cfg.Endpoint),
@@ -70,7 +70,7 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 
 	shutdown := func(ctx context.Context) error {
 		return errors.Join(
-			traceExporter.Shutdown(ctx),
+			tracerProvider.Shutdown(ctx),
 			meterProvider.Shutdown(ctx),
 		)
 	}
