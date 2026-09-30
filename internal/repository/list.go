@@ -2,8 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 
 	"git.dittmar.dev/robin/dttmr-api/internal/domain"
@@ -36,7 +34,7 @@ func (r *ListRepo) DeleteList(ctx context.Context, listID string) error {
 }
 
 func (r *ListRepo) SetListGroup(ctx context.Context, listID string, groupID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE lists SET group_id = $1 WHERE id = $2", groupID, listID)
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE lists SET group_id = $1, modified_at = NOW() WHERE id = $2", groupID, listID)
 	if err != nil {
 		return fmt.Errorf("failed to update list: %w", err)
 	}
@@ -69,9 +67,6 @@ func (r *ListRepo) GetLists(ctx context.Context, userID string) ([]domain.List, 
 		userID,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get lists: %w", err)
 	}
 	defer rows.Close()
@@ -231,9 +226,6 @@ func (r *ListRepo) GetListItemsForList(ctx context.Context, listID string) ([]do
 		listID,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to get list items for list: %w", err)
 	}
 	defer rows.Close()
@@ -250,7 +242,7 @@ func (r *ListRepo) GetListItemsForList(ctx context.Context, listID string) ([]do
 		items = append(items, l)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to get list items for lists: %w", err)
+		return nil, fmt.Errorf("failed to get list items for list: %w", err)
 	}
 
 	return items, nil

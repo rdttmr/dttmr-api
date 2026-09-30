@@ -34,7 +34,7 @@ func (r *RecipeRepo) DeleteRecipe(ctx context.Context, recipeID string) error {
 }
 
 func (r *RecipeRepo) SetRecipeGroup(ctx context.Context, recipeID string, groupID string) error {
-	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE recipes SET group_id = $1 WHERE id = $2", groupID, recipeID)
+	_, err := r.conn(ctx).ExecContext(ctx, "UPDATE recipes SET group_id = $1, modified_at = NOW() WHERE id = $2", groupID, recipeID)
 	if err != nil {
 		return fmt.Errorf("failed to update recipe: %w", err)
 	}
