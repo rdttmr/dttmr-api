@@ -1,7 +1,7 @@
 package request
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 )
@@ -9,12 +9,8 @@ import (
 func DecodeJSON[T any](r *http.Request) (T, error) {
 	var payload T
 
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(&payload); err != nil {
+	if err := json.UnmarshalRead(r.Body, &payload, json.RejectUnknownMembers(true)); err != nil {
 		return payload, fmt.Errorf("error decoding payload: %w", err)
 	}
-
 	return payload, nil
 }
