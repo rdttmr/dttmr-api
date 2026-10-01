@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/golang-migrate/migrate/v4/source"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
@@ -26,12 +26,12 @@ func RunMigrations(db *sql.DB, migrationFS fs.FS) error {
 		}
 	}()
 
-	dbDriver, err := postgres.WithInstance(db, &postgres.Config{})
+	dbDriver, err := pgx.WithInstance(db, &pgx.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to create migration db driver: %w", err)
 	}
 
-	m, err := migrate.NewWithInstance("iofs", sourceDriver, "postgres", dbDriver)
+	m, err := migrate.NewWithInstance("iofs", sourceDriver, "pgx5", dbDriver)
 	if err != nil {
 		return fmt.Errorf("failed to initialize migrator: %w", err)
 	}

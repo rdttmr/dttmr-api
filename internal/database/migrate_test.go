@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/stretchr/testify/require"
 
@@ -155,9 +154,9 @@ func newMigrator(t *testing.T, db *sql.DB, fsys fs.FS) *migrate.Migrate {
 	t.Helper()
 	src, err := iofs.New(fsys, ".")
 	require.NoError(t, err)
-	drv, err := postgres.WithInstance(db, &postgres.Config{})
+	drv, err := pgx.WithInstance(db, &pgx.Config{})
 	require.NoError(t, err)
-	m, err := migrate.NewWithInstance("iofs", src, "postgres", drv)
+	m, err := migrate.NewWithInstance("iofs", src, "pgx5", drv)
 	require.NoError(t, err)
 	return m
 }
