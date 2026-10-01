@@ -69,6 +69,10 @@ func run() error {
 		slog.Error("jwt secret must be provided, shutting down")
 		return nil
 	}
+	if len(cfg.JWTSecret) < 32 {
+		slog.Error("jwt secret must be at least 32 bytes")
+		return nil
+	}
 
 	telCfg := telemetry.Config{
 		ServiceName:    serivceName,
