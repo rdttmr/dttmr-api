@@ -65,6 +65,10 @@ func run() error {
 	defer slog.Info("service shutdown!")
 
 	cfg := config.Load()
+	if cfg.JWTSecret == "" {
+		slog.Error("jwt secret must be provided, shutting down")
+		return nil
+	}
 
 	telCfg := telemetry.Config{
 		ServiceName:    serivceName,

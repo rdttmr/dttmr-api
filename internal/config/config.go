@@ -15,13 +15,13 @@ type Config struct {
 	JWTSecret    string
 }
 
-func Load() *Config {
-	envFlag := flag.String("env", "development", "environment to use")
-	portFlag := flag.Int("port", 8080, "port to listen on")
-	otlpEndpointFlag := flag.String("otlp-endpoint", "localhost:4317", "otlp endpoint")
-	databaseUrlFlag := flag.String("database-url", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable&timezone=utc", "database connection string")
-	jwtSecretFlag := flag.String("jwt-secret", "5!zM8k@wC0Y5jgrbS8xLC0gW9k7dLaeI", "JWT secret")
+var envFlag = flag.String("env", "development", "environment to use")
+var portFlag = flag.Int("port", 8080, "port to listen on")
+var otlpEndpointFlag = flag.String("otlp-endpoint", "localhost:4317", "otlp endpoint")
+var databaseUrlFlag = flag.String("database-url", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable&timezone=utc", "database connection string")
+var jwtSecretFlag = flag.String("jwt-secret", "", "JWT secret")
 
+func Load() *Config {
 	flag.Parse()
 
 	cfg := &Config{
