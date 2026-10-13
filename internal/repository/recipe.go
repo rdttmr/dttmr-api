@@ -64,7 +64,7 @@ func (r *RecipeRepo) SetRecipeName(ctx context.Context, recipeID string, name st
 
 func (r *RecipeRepo) GetRecipes(ctx context.Context, userID string) ([]domain.Recipe, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at DESC, id",
+		"SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at DESC, r.id",
 		userID,
 	)
 	if err != nil {
@@ -183,7 +183,7 @@ func (r *RecipeRepo) RemoveListItemFromRecipe(ctx context.Context, recipeID stri
 
 func (r *RecipeRepo) GetListItemsForRecipe(ctx context.Context, recipeID string) ([]domain.ListItem, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT li.id, li.list_id, li.title, li.is_completed, li.created_at, li.modified_at FROM recipe_items AS ri INNER JOIN list_items AS li ON ri.list_item_id=li.id WHERE ri.recipe_id = $1 ORDER BY ri.position, li.modified_at DESC, id",
+		"SELECT li.id, li.list_id, li.title, li.is_completed, li.created_at, li.modified_at FROM recipe_items AS ri INNER JOIN list_items AS li ON ri.list_item_id=li.id WHERE ri.recipe_id = $1 ORDER BY ri.position, li.modified_at DESC, li.id",
 		recipeID,
 	)
 	if err != nil {
