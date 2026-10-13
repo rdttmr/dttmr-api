@@ -210,7 +210,7 @@ func (r *RecipeRepo) GetListItemsForRecipe(ctx context.Context, recipeID string)
 
 func (r *RecipeRepo) UncheckListItemsFromRecipe(ctx context.Context, recipeID string) error {
 	_, err := r.conn(ctx).ExecContext(ctx,
-		"UPDATE list_items SET is_completed = FALSE WHERE id IN (SELECT list_item_id FROM recipe_items WHERE recipe_id = $1)",
+		"UPDATE list_items SET is_completed = FALSE, modified_at = NOW() WHERE id IN (SELECT list_item_id FROM recipe_items WHERE recipe_id = $1)",
 		recipeID,
 	)
 	if err != nil {

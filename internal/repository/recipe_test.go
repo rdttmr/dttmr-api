@@ -56,7 +56,7 @@ const (
 	addRecipeItemQuery      = "INSERT INTO recipe_items (recipe_id, list_item_id) SELECT r.id, li.id FROM recipes r INNER JOIN list_items li ON li.id = $2 INNER JOIN lists l ON l.id = li.list_id AND l.group_id = r.group_id WHERE r.id = $1 FOR SHARE OF r, l"
 	removeRecipeItemQuery   = "DELETE FROM recipe_items WHERE recipe_id = $1 AND list_item_id = $2"
 	selectRecipeItemsQuery  = "SELECT li.id, li.list_id, li.title, li.is_completed, li.created_at, li.modified_at FROM recipe_items AS ri INNER JOIN list_items AS li ON ri.list_item_id=li.id WHERE ri.recipe_id = $1 ORDER BY ri.position"
-	uncheckRecipeItemsQuery = "UPDATE list_items SET is_completed = FALSE WHERE id IN (SELECT list_item_id FROM recipe_items WHERE recipe_id = $1)"
+	uncheckRecipeItemsQuery = "UPDATE list_items SET is_completed = FALSE, modified_at = NOW() WHERE id IN (SELECT list_item_id FROM recipe_items WHERE recipe_id = $1)"
 )
 
 var (
