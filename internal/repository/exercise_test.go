@@ -29,7 +29,7 @@ func newExerciseRepo(t *testing.T) (*ExerciseRepo, sqlmock.Sqlmock) {
 }
 
 const (
-	selectExercisesQuery = "SELECT id, name, equipment, metric, load, tags, notes, modified_at FROM exercises WHERE user_id IS NULL ORDER BY modified_at DESC OFFSET $1 LIMIT $2"
+	selectExercisesQuery = "SELECT id, name, equipment, metric, load, tags, notes, modified_at FROM exercises WHERE user_id IS NULL ORDER BY modified_at DESC, id OFFSET $1 LIMIT $2"
 	countExercisesQuery  = "SELECT COUNT(*) FROM exercises WHERE user_id IS NULL"
 )
 

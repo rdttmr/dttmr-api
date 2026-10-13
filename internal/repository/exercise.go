@@ -26,7 +26,7 @@ func (r *ExerciseRepo) DeleteExercise(ctx context.Context, id string) error {
 
 func (r *ExerciseRepo) GetExercises(ctx context.Context, offset int, count int) ([]domain.Exercise, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT id, name, equipment, metric, load, tags, notes, modified_at FROM exercises WHERE user_id IS NULL ORDER BY modified_at DESC OFFSET $1 LIMIT $2",
+		"SELECT id, name, equipment, metric, load, tags, notes, modified_at FROM exercises WHERE user_id IS NULL ORDER BY modified_at DESC, id OFFSET $1 LIMIT $2",
 		offset, count,
 	)
 	if err != nil {

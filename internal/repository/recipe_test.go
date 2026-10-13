@@ -48,14 +48,14 @@ const (
 	updateRecipeGroupQuery  = "UPDATE recipes SET group_id = $1, modified_at = NOW() WHERE id = $2"
 	deleteOrphanItemsQuery  = "DELETE FROM recipe_items ri USING list_items li, lists l WHERE ri.recipe_id = $1 AND ri.list_item_id = li.id AND li.list_id = l.id AND l.group_id <> $2"
 	updateRecipeNameQuery   = "UPDATE recipes SET name = $1, modified_at = NOW() WHERE id = $2"
-	selectRecipesQuery      = "SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at"
+	selectRecipesQuery      = "SELECT r.id, r.name, r.group_id, r.created_at, r.modified_at, (SELECT COUNT(*) FROM recipe_items AS ri WHERE ri.recipe_id = r.id), COALESCE(rp.position, 0) FROM recipes AS r LEFT JOIN recipe_positions AS rp ON r.id=rp.recipe_id AND rp.user_id = $1 WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY rp.position, r.modified_at DESC, id"
 	isUserInRecipeQuery     = "SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = (SELECT r.group_id FROM recipes r WHERE r.id = $1) AND gm.user_id = $2"
 	orderRecipesQuery       = "INSERT INTO recipe_positions (recipe_id, user_id, position) SELECT o.recipe_id, $1, o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY o(recipe_id, idx) ON CONFLICT (recipe_id, user_id) DO UPDATE SET position = EXCLUDED.position"
 	lockRecipeOrderQuery    = "SELECT pg_advisory_xact_lock(hashtextextended('recipe_positions:' || $1::text, 0))"
 	lockUserRecipesQuery    = "SELECT r.id FROM recipes r WHERE r.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY r.id FOR KEY SHARE OF r"
 	addRecipeItemQuery      = "INSERT INTO recipe_items (recipe_id, list_item_id) SELECT r.id, li.id FROM recipes r INNER JOIN list_items li ON li.id = $2 INNER JOIN lists l ON l.id = li.list_id AND l.group_id = r.group_id WHERE r.id = $1 FOR SHARE OF r, l"
 	removeRecipeItemQuery   = "DELETE FROM recipe_items WHERE recipe_id = $1 AND list_item_id = $2"
-	selectRecipeItemsQuery  = "SELECT li.id, li.list_id, li.title, li.is_completed, li.created_at, li.modified_at FROM recipe_items AS ri INNER JOIN list_items AS li ON ri.list_item_id=li.id WHERE ri.recipe_id = $1 ORDER BY ri.position"
+	selectRecipeItemsQuery  = "SELECT li.id, li.list_id, li.title, li.is_completed, li.created_at, li.modified_at FROM recipe_items AS ri INNER JOIN list_items AS li ON ri.list_item_id=li.id WHERE ri.recipe_id = $1 ORDER BY ri.position, li.modified_at DESC, id"
 	uncheckRecipeItemsQuery = "UPDATE list_items SET is_completed = FALSE, modified_at = NOW() WHERE id IN (SELECT list_item_id FROM recipe_items WHERE recipe_id = $1)"
 )
 
