@@ -222,7 +222,7 @@ func (r *ListRepo) SetListItemCompleted(ctx context.Context, listItemID string, 
 
 func (r *ListRepo) GetListItemsForList(ctx context.Context, listID string) ([]domain.ListItem, error) {
 	rows, err := r.conn(ctx).QueryContext(ctx,
-		"SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at DESC",
+		"SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at, id DESC",
 		listID,
 	)
 	if err != nil {

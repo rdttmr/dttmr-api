@@ -48,7 +48,7 @@ const (
 	updateListItemQuery      = "UPDATE list_items SET title = $1, is_completed = $2, modified_at = NOW() WHERE id = $3"
 	updateListItemTitleQuery = "UPDATE list_items SET title = $1, modified_at = NOW() WHERE id = $2"
 	updateListItemDoneQuery  = "UPDATE list_items SET is_completed = $1, modified_at = NOW() WHERE id = $2"
-	selectListItemsQuery     = "SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at DESC"
+	selectListItemsQuery     = "SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at, id DESC"
 )
 
 var (
