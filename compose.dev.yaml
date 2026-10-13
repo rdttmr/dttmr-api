@@ -1,0 +1,12 @@
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  otel-collector:
+    ports:
+      - "4317:4317"
+
+  api:
+    ports:
+      - "8080:8080"

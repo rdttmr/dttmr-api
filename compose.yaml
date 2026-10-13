@@ -5,10 +5,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "15432:5432"
     volumes:
-      - /srv/dttmr-api/postgresql:/var/lib/postgresql
+      - /srv/postgresql:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -22,8 +20,6 @@ services:
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./docker/otel-config.yaml:/etc/otelcol/config.yaml
-    ports:
-      - "4317:4317"
 
   bootstrap:
     build: .
@@ -41,8 +37,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    ports:
-      - "8080:8080"
     depends_on:
       otel-collector:
         condition: service_started

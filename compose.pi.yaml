@@ -4,6 +4,14 @@ services:
       - default
       - db-network
 
+  api:
+    networks:
+      - default
+      - db-network
+      - dittmar.dev
+
 networks:
   db-network:
+    external: true
+  dittmar.dev:
     external: true
