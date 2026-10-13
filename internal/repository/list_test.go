@@ -37,7 +37,7 @@ const (
 	updateListGroupQuery     = "UPDATE lists SET group_id = $1, modified_at = NOW() WHERE id = $2"
 	deleteOrphanRecipeItems  = "DELETE FROM recipe_items ri USING list_items li, recipes r WHERE ri.list_item_id = li.id AND li.list_id = $1 AND ri.recipe_id = r.id AND r.group_id <> $2"
 	updateListNameQuery      = "UPDATE lists SET name = $1, modified_at = NOW() WHERE id = $2"
-	selectListsQuery         = "SELECT l.id, l.name, l.group_id, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true), COALESCE(lp.position, 0) FROM lists AS l LEFT JOIN list_positions AS lp ON l.id=lp.list_id AND lp.user_id = $1 WHERE l.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY lp.position, l.modified_at"
+	selectListsQuery         = "SELECT l.id, l.name, l.group_id, l.created_at, l.modified_at, (SELECT COUNT(*) FROM list_items WHERE list_id=l.id), (SELECT COUNT(*) FROM list_items WHERE list_id=l.id AND is_completed=true), COALESCE(lp.position, 0) FROM lists AS l LEFT JOIN list_positions AS lp ON l.id=lp.list_id AND lp.user_id = $1 WHERE l.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY lp.position, l.modified_at DESC, l.id"
 	orderListsQuery          = "INSERT INTO list_positions (list_id, user_id, position) SELECT o.list_id, $1, o.idx - 1 FROM unnest($2::uuid[]) WITH ORDINALITY o(list_id, idx) ON CONFLICT (list_id, user_id) DO UPDATE SET position = EXCLUDED.position"
 	lockListOrderQuery       = "SELECT pg_advisory_xact_lock(hashtextextended('list_positions:' || $1::text, 0))"
 	lockUsersListsQuery      = "SELECT l.id FROM lists l WHERE l.group_id IN (SELECT group_id FROM group_members WHERE user_id = $1) ORDER BY l.id FOR KEY SHARE OF l"
@@ -48,7 +48,7 @@ const (
 	updateListItemQuery      = "UPDATE list_items SET title = $1, is_completed = $2, modified_at = NOW() WHERE id = $3"
 	updateListItemTitleQuery = "UPDATE list_items SET title = $1, modified_at = NOW() WHERE id = $2"
 	updateListItemDoneQuery  = "UPDATE list_items SET is_completed = $1, modified_at = NOW() WHERE id = $2"
-	selectListItemsQuery     = "SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at DESC"
+	selectListItemsQuery     = "SELECT id, title, is_completed, created_at, modified_at FROM list_items WHERE list_id = $1 ORDER BY is_completed, modified_at DESC, id"
 )
 
 var (

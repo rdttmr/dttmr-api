@@ -7,7 +7,6 @@ services:
   api:
     networks:
       - default
-      - db-network
       - dittmar.dev
 
 networks:
