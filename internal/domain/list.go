@@ -78,7 +78,7 @@ func (s *ListService) CreateList(ctx context.Context, authUserID string, groupID
 			return nil, err
 		}
 		if groupID == "" {
-			return nil, ErrGroupIDMissing
+			return nil, ErrGroupDefaultNotFound
 		}
 	}
 
