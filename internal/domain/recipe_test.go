@@ -170,7 +170,7 @@ func TestRecipeService_CreateRecipe(t *testing.T) {
 		recipe, err := svc.CreateRecipe(ctx, "user-1", "", "Pancakes")
 
 		assert.Nil(t, recipe)
-		assert.ErrorIs(t, err, ErrGroupIDMissing)
+		assert.ErrorIs(t, err, ErrGroupDefaultNotFound)
 		assertGroupCallOrder(t, groups, "GetDefaultGroupID")
 	})
 
