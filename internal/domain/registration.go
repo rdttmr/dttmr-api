@@ -24,28 +24,28 @@ func (s *RegistrationService) Register(ctx context.Context, inviteCode string, e
 	}
 
 	var user *User
-	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		user, err = s.UserService.CreateUser(ctx, email, username, password)
+	err = s.tx.WithinTx(ctx, func(txCtx context.Context) error {
+		user, err = s.UserService.CreateUser(txCtx, email, username, password)
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to create user", slog.Any("error", err))
+			slog.ErrorContext(txCtx, "failed to create user", slog.Any("error", err))
 			return err
 		}
 
-		group, err := s.GroupService.CreateGroup(ctx, user.ID, "Personal")
+		group, err := s.GroupService.CreateGroup(txCtx, user.ID, "Personal")
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to create group", slog.Any("error", err))
+			slog.ErrorContext(txCtx, "failed to create group", slog.Any("error", err))
 			return err
 		}
 
-		err = s.GroupService.SetDefaultGroupID(ctx, user.ID, group.ID)
+		err = s.GroupService.SetDefaultGroupID(txCtx, user.ID, group.ID)
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to set default group", slog.Any("error", err))
+			slog.ErrorContext(txCtx, "failed to set default group", slog.Any("error", err))
 			return err
 		}
 
-		err = s.InviteService.ConsumeInvite(ctx, invite.ID, user.ID)
+		err = s.InviteService.ConsumeInvite(txCtx, invite.ID, user.ID)
 		if err != nil {
-			slog.ErrorContext(ctx, "failed to consume invite", slog.Any("error", err))
+			slog.ErrorContext(txCtx, "failed to consume invite", slog.Any("error", err))
 			return err
 		}
 
