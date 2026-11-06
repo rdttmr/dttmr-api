@@ -64,7 +64,7 @@ func (s *RecipeService) CreateRecipe(ctx context.Context, authUserID string, gro
 			return nil, err
 		}
 		if groupID == "" {
-			return nil, ErrGroupIDMissing
+			return nil, ErrGroupDefaultNotFound
 		}
 	}
 

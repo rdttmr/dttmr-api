@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrGroupIDMissing         = errors.New("group id is required")
+	ErrGroupDefaultNotFound   = errors.New("default group not found")
 	ErrGroupHasMembers        = errors.New("group with more than on member must not be deleted")
 	ErrGroupIsDefault         = errors.New("group is default")
 	ErrOwnerCantLeave         = errors.New("group owner must not leave")
@@ -86,21 +87,25 @@ func (s *GroupService) CreateGroup(ctx context.Context, authUserID string, name 
 	}
 
 	var group *Group
-	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		g, err := s.repo.CreateGroup(ctx, name, authUserID)
+	err := s.tx.WithinTx(ctx, func(txCtx context.Context) error {
+		created, err := s.repo.CreateGroup(txCtx, name, authUserID)
 		if err != nil {
 			return err
 		}
 
-		err = s.repo.AddUserToGroup(ctx, g.ID, authUserID, RoleOwner)
+		err = s.repo.AddUserToGroup(txCtx, created.ID, authUserID, RoleOwner)
 		if err != nil {
 			return err
 		}
 
-		g.IsDefault = false
-		g.MemberCount = 1
-		g.Role = RoleOwner
-		group = g
+		group = &Group{
+			ID:          created.ID,
+			Name:        created.Name,
+			IsDefault:   false,
+			Role:        RoleOwner,
+			MemberCount: 1,
+			CreatedAt:   created.CreatedAt,
+		}
 		return nil
 	})
 	if err != nil {
